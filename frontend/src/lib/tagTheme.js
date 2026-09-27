@@ -1,58 +1,58 @@
 export const TAG_THEMES = {
   'Approachable': {
     name: 'Approachable',
-    color: '#34d399',      // Emerald Green
-    border: '#10b981',
-    borderSubtle: 'rgba(16, 185, 129, 0.35)',
-    bg: 'rgba(16, 185, 129, 0.10)',
-    activeBg: 'rgba(16, 185, 129, 0.25)',
-    glow: '0 0 14px rgba(16, 185, 129, 0.45)',
+    color: '#10b981',
+    border: 'rgba(16, 185, 129, 0.4)',
+    borderSubtle: 'rgba(16, 185, 129, 0.2)',
+    bg: 'rgba(16, 185, 129, 0.05)',
+    activeBg: 'rgba(16, 185, 129, 0.15)',
+    glow: '0 0 12px rgba(16, 185, 129, 0.35)',
   },
   'Clear Explanations': {
     name: 'Clear Explanations',
-    color: '#38bdf8',      // Sky Cyan
-    border: '#0ea5e9',
-    borderSubtle: 'rgba(14, 165, 233, 0.35)',
-    bg: 'rgba(14, 165, 233, 0.10)',
-    activeBg: 'rgba(14, 165, 233, 0.25)',
-    glow: '0 0 14px rgba(14, 165, 233, 0.45)',
+    color: '#3b82f6',
+    border: 'rgba(59, 130, 246, 0.4)',
+    borderSubtle: 'rgba(59, 130, 246, 0.2)',
+    bg: 'rgba(59, 130, 246, 0.05)',
+    activeBg: 'rgba(59, 130, 246, 0.15)',
+    glow: '0 0 12px rgba(59, 130, 246, 0.35)',
   },
   'Engaging Lectures': {
     name: 'Engaging Lectures',
-    color: '#c084fc',      // Vibrant Purple
-    border: '#a855f7',
-    borderSubtle: 'rgba(168, 85, 247, 0.35)',
-    bg: 'rgba(168, 85, 247, 0.10)',
-    activeBg: 'rgba(168, 85, 247, 0.25)',
-    glow: '0 0 14px rgba(168, 85, 247, 0.45)',
+    color: '#a855f7',
+    border: 'rgba(168, 85, 247, 0.4)',
+    borderSubtle: 'rgba(168, 85, 247, 0.2)',
+    bg: 'rgba(168, 85, 247, 0.05)',
+    activeBg: 'rgba(168, 85, 247, 0.15)',
+    glow: '0 0 12px rgba(168, 85, 247, 0.35)',
   },
   'Heavy Workload': {
     name: 'Heavy Workload',
-    color: '#fbbf24',      // Warm Amber / Gold
-    border: '#f59e0b',
-    borderSubtle: 'rgba(245, 158, 11, 0.35)',
-    bg: 'rgba(245, 158, 11, 0.10)',
-    activeBg: 'rgba(245, 158, 11, 0.25)',
-    glow: '0 0 14px rgba(245, 158, 11, 0.45)',
+    color: '#f59e0b',
+    border: 'rgba(245, 158, 11, 0.4)',
+    borderSubtle: 'rgba(245, 158, 11, 0.2)',
+    bg: 'rgba(245, 158, 11, 0.05)',
+    activeBg: 'rgba(245, 158, 11, 0.15)',
+    glow: '0 0 12px rgba(245, 158, 11, 0.35)',
   },
   'Tough Grader': {
     name: 'Tough Grader',
-    color: '#f87171',      // Crimson / Coral Red
-    border: '#ef4444',
-    borderSubtle: 'rgba(239, 68, 68, 0.35)',
-    bg: 'rgba(239, 68, 68, 0.10)',
-    activeBg: 'rgba(239, 68, 68, 0.25)',
-    glow: '0 0 14px rgba(239, 68, 68, 0.45)',
+    color: '#ef4444',
+    border: 'rgba(239, 68, 68, 0.4)',
+    borderSubtle: 'rgba(239, 68, 68, 0.2)',
+    bg: 'rgba(239, 68, 68, 0.05)',
+    activeBg: 'rgba(239, 68, 68, 0.15)',
+    glow: '0 0 12px rgba(239, 68, 68, 0.35)',
   }
 };
 
 export const DEFAULT_TAG_THEME = {
   color: '#94a3b8',
-  border: 'rgba(255, 255, 255, 0.2)',
-  borderSubtle: 'rgba(255, 255, 255, 0.12)',
-  bg: 'rgba(255, 255, 255, 0.05)',
-  activeBg: 'rgba(255, 255, 255, 0.15)',
-  glow: '0 0 10px rgba(255, 255, 255, 0.2)',
+  border: 'rgba(148, 163, 184, 0.4)',
+  borderSubtle: 'rgba(148, 163, 184, 0.2)',
+  bg: 'rgba(148, 163, 184, 0.05)',
+  activeBg: 'rgba(148, 163, 184, 0.15)',
+  glow: '0 0 12px rgba(148, 163, 184, 0.25)',
 };
 
 export function getTagTheme(tagName) {

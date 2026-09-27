@@ -88,7 +88,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
       case 'L': return { label: 'Lecture (L)', bg: 'rgba(59, 130, 246, 0.15)', text: '#60a5fa', border: 'rgba(59, 130, 246, 0.35)', icon: '📖' };
       case 'P': return { label: 'Practical (P)', bg: 'rgba(16, 185, 129, 0.15)', text: '#34d399', border: 'rgba(16, 185, 129, 0.35)', icon: '🧪' };
       case 'T': return { label: 'Tutorial (T)', bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.35)', icon: '✏️' };
-      default: return { label: ltp, bg: 'rgba(255, 255, 255, 0.1)', text: '#fff', border: 'rgba(255, 255, 255, 0.2)', icon: '📌' };
+      default: return { label: ltp, bg: 'var(--border-light)', text: '#fff', border: 'rgba(255, 255, 255, 0.2)', icon: '📌' };
     }
   };
 
@@ -185,48 +185,26 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
   };
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 1000,
-      background: 'rgba(0, 0, 0, 0.82)', backdropFilter: 'blur(12px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
-    }} onClick={onClose}>
-      <div 
-        style={{
-          width: '100%', maxWidth: '540px', padding: '0',
-          background: 'linear-gradient(180deg, #18181b 0%, #111113 100%)',
-          borderRadius: '18px',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 40px rgba(239, 68, 68, 0.08)',
-          position: 'relative',
-          display: 'flex', flexDirection: 'column', maxHeight: '92vh',
-          overflow: 'hidden'
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Top ambient color glow line */}
-        <div style={{
-          position: 'absolute', top: 0, left: '24px', right: '24px', height: '1.5px',
-          background: 'linear-gradient(90deg, transparent 0%, rgba(239, 68, 68, 0.8) 35%, rgba(59, 130, 246, 0.7) 70%, transparent 100%)',
-          zIndex: 20
-        }} />
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
 
         {/* Close button */}
         <button 
           onClick={onClose}
           style={{
             position: 'absolute', top: '18px', right: '18px',
-            background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', 
-            color: '#a1a1aa', borderRadius: '50%', width: '34px', height: '34px',
+            background: 'var(--bg-main)', border: '1px solid rgba(255, 255, 255, 0.1)', 
+            color: 'var(--text-secondary)', borderRadius: '50%', width: '34px', height: '34px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', zIndex: 10, transition: 'all 0.2s ease'
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)';
-            e.currentTarget.style.color = '#ffffff';
+            e.currentTarget.style.color = 'var(--text-primary)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-            e.currentTarget.style.color = '#a1a1aa';
+            e.currentTarget.style.background = 'var(--bg-main)';
+            e.currentTarget.style.color = 'var(--text-secondary)';
           }}
         >
           <X size={17} />
@@ -249,7 +227,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#fafafa', letterSpacing: '-0.02em' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
                   {isCR ? "CR Faculty & Curriculum Portal" : "Faculty & Course Verification"}
                 </h3>
                 {isCR && (
@@ -262,7 +240,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                   </span>
                 )}
               </div>
-              <span style={{ fontSize: '13px', color: '#a1a1aa', marginTop: '2px', display: 'block' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px', display: 'block' }}>
                 Curating information for <strong style={{ color: '#f4f4f5' }}>{teacher.fullName}</strong>
               </span>
             </div>
@@ -271,7 +249,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
           {/* Segmented Tab Navigation */}
           <div style={{ 
             display: 'flex', gap: '6px', marginTop: '16px', 
-            background: 'rgba(0, 0, 0, 0.45)', padding: '4px', borderRadius: '12px',
+            background: 'var(--bg-card-subtle)', padding: '4px', borderRadius: '12px',
             border: '1px solid rgba(255, 255, 255, 0.06)'
           }}>
             <button
@@ -281,12 +259,12 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                 flex: 1, padding: '8px 14px', borderRadius: '9px', fontSize: '13px', fontWeight: 600,
                 border: 'none', cursor: 'pointer', transition: 'all 0.2s ease',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
-                background: activeTab === 'course' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                color: activeTab === 'course' ? '#ffffff' : '#a1a1aa',
+                background: activeTab === 'course' ? 'var(--border-light)' : 'transparent',
+                color: activeTab === 'course' ? 'var(--text-primary)' : 'var(--text-secondary)',
                 boxShadow: activeTab === 'course' ? '0 2px 10px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12)' : 'none'
               }}
             >
-              <BookOpen size={15} color={activeTab === 'course' ? '#ef4444' : '#71717a'} />
+              <BookOpen size={15} color={activeTab === 'course' ? '#ef4444' : 'var(--text-muted)'} />
               <span>Courses & Batches</span>
             </button>
             <button
@@ -296,12 +274,12 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                 flex: 1, padding: '8px 14px', borderRadius: '9px', fontSize: '13px', fontWeight: 600,
                 border: 'none', cursor: 'pointer', transition: 'all 0.2s ease',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
-                background: activeTab === 'profile' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                color: activeTab === 'profile' ? '#ffffff' : '#a1a1aa',
+                background: activeTab === 'profile' ? 'var(--border-light)' : 'transparent',
+                color: activeTab === 'profile' ? 'var(--text-primary)' : 'var(--text-secondary)',
                 boxShadow: activeTab === 'profile' ? '0 2px 10px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12)' : 'none'
               }}
             >
-              <User size={15} color={activeTab === 'profile' ? '#ef4444' : '#71717a'} />
+              <User size={15} color={activeTab === 'profile' ? '#ef4444' : 'var(--text-muted)'} />
               <span>Profile Info</span>
             </button>
           </div>
@@ -342,7 +320,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{
                   padding: '20px', borderRadius: '16px',
-                  background: 'linear-gradient(145deg, rgba(32, 32, 37, 0.7) 0%, rgba(20, 20, 24, 0.85) 100%)',
+                  background: 'var(--bg-main)',
                   border: '1px solid rgba(255, 255, 255, 0.1)',
                   boxShadow: '0 8px 30px -8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08)'
                 }}>
@@ -359,10 +337,10 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                         <BookOpen size={16} />
                       </div>
                       <div>
-                        <span style={{ fontSize: '14.5px', fontWeight: 700, color: '#ffffff', letterSpacing: '-0.01em', display: 'block' }}>
+                        <span style={{ fontSize: '14.5px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em', display: 'block' }}>
                           Course & Subject Correction
                         </span>
-                        <span style={{ fontSize: '11.5px', color: '#71717a' }}>
+                        <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
                           Configure course code, class format, batch & branch
                         </span>
                       </div>
@@ -380,7 +358,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
 
                   {/* Course Offering Dropdown Selector */}
                   <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: '#a1a1aa', marginBottom: '7px', fontWeight: 600 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '7px', fontWeight: 600 }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                         <Layers size={13} color="#ef4444" />
                         <span>Select Course Offering to Correct (or Add New):</span>
@@ -398,7 +376,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                           width: '100%',
                           fontSize: '13.5px',
                           padding: '10px 36px 10px 14px',
-                          background: 'rgba(10, 10, 12, 0.75)',
+                          background: 'var(--bg-card-subtle)',
                           border: '1px solid rgba(255, 255, 255, 0.12)',
                           borderRadius: '10px',
                           color: '#f4f4f5',
@@ -443,7 +421,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                         size={16} 
                         style={{ 
                           position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', 
-                          color: '#71717a', pointerEvents: 'none' 
+                          color: 'var(--text-muted)', pointerEvents: 'none' 
                         }} 
                       />
                     </div>
@@ -453,7 +431,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                   <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.3fr', gap: '14px', marginBottom: '14px' }}>
                     {/* Course Code */}
                     <div>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#a1a1aa', marginBottom: '7px', fontWeight: 600 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '7px', fontWeight: 600 }}>
                         <Hash size={13} color="#a1a1aa" />
                         <span>Course Code</span>
                       </label>
@@ -467,10 +445,10 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                             fontWeight: 600,
                             letterSpacing: '0.04em',
                             padding: '10px 14px',
-                            background: 'rgba(10, 10, 12, 0.75)',
+                            background: 'var(--bg-card-subtle)',
                             border: '1px solid rgba(255, 255, 255, 0.12)',
                             borderRadius: '10px',
-                            color: '#ffffff',
+                            color: 'var(--text-primary)',
                             outline: 'none',
                             boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.4)',
                             transition: 'border-color 0.2s, box-shadow 0.2s'
@@ -492,13 +470,13 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
 
                     {/* Class Type LTP Tactile Segmented Control */}
                     <div>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#a1a1aa', marginBottom: '7px', fontWeight: 600 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '7px', fontWeight: 600 }}>
                         <Clock size={13} color="#a1a1aa" />
                         <span>Class Type (LTP)</span>
                       </label>
                       <div style={{
                         display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px',
-                        background: 'rgba(10, 10, 12, 0.75)',
+                        background: 'var(--bg-card-subtle)',
                         border: '1px solid rgba(255, 255, 255, 0.12)',
                         padding: '3px', borderRadius: '10px'
                       }}>
@@ -521,7 +499,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                                 fontWeight: isActive ? 700 : 500,
                                 border: isActive ? `1px solid ${opt.border}` : '1px solid transparent',
                                 background: isActive ? opt.activeBg : 'transparent',
-                                color: isActive ? opt.color : '#a1a1aa',
+                                color: isActive ? opt.color : 'var(--text-secondary)',
                                 cursor: 'pointer',
                                 transition: 'all 0.15s ease',
                                 display: 'flex',
@@ -541,10 +519,10 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
 
                   {/* Course Title */}
                   <div style={{ marginBottom: '14px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#a1a1aa', marginBottom: '7px', fontWeight: 600 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '7px', fontWeight: 600 }}>
                       <FileText size={13} color="#a1a1aa" />
                       <span>Course Title</span>
-                      <span style={{ fontSize: '11px', color: '#71717a', fontWeight: 400 }}>(Optional)</span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 400 }}>(Optional)</span>
                     </label>
                     <input
                       type="text"
@@ -552,10 +530,10 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                         width: '100%',
                         fontSize: '13.5px',
                         padding: '10px 14px',
-                        background: 'rgba(10, 10, 12, 0.75)',
+                        background: 'var(--bg-card-subtle)',
                         border: '1px solid rgba(255, 255, 255, 0.12)',
                         borderRadius: '10px',
-                        color: '#ffffff',
+                        color: 'var(--text-primary)',
                         outline: 'none',
                         boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.4)',
                         transition: 'border-color 0.2s, box-shadow 0.2s'
@@ -577,7 +555,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                   {/* Batch & Branch Grid */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                     <div>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#a1a1aa', marginBottom: '7px', fontWeight: 600 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '7px', fontWeight: 600 }}>
                         <Users size={13} color="#a1a1aa" />
                         <span>Batch Taught</span>
                       </label>
@@ -589,10 +567,10 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                           fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
                           fontWeight: 600,
                           padding: '10px 14px',
-                          background: 'rgba(10, 10, 12, 0.75)',
+                          background: 'var(--bg-card-subtle)',
                           border: '1px solid rgba(255, 255, 255, 0.12)',
                           borderRadius: '10px',
-                          color: '#ffffff',
+                          color: 'var(--text-primary)',
                           outline: 'none',
                           boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.4)',
                           transition: 'border-color 0.2s, box-shadow 0.2s'
@@ -611,7 +589,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#a1a1aa', marginBottom: '7px', fontWeight: 600 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '7px', fontWeight: 600 }}>
                         <Briefcase size={13} color="#a1a1aa" />
                         <span>Branch Taught</span>
                       </label>
@@ -623,10 +601,10 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                           fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
                           fontWeight: 600,
                           padding: '10px 14px',
-                          background: 'rgba(10, 10, 12, 0.75)',
+                          background: 'var(--bg-card-subtle)',
                           border: '1px solid rgba(255, 255, 255, 0.12)',
                           borderRadius: '10px',
-                          color: '#ffffff',
+                          color: 'var(--text-primary)',
                           outline: 'none',
                           boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.4)',
                           transition: 'border-color 0.2s, box-shadow 0.2s'
@@ -652,7 +630,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                       marginTop: '16px',
                       padding: '12px 14px',
                       borderRadius: '12px',
-                      background: 'rgba(0, 0, 0, 0.4)',
+                      background: 'var(--bg-main)',
                       border: '1px solid rgba(255, 255, 255, 0.08)',
                       display: 'flex',
                       alignItems: 'center',
@@ -665,7 +643,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                           fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
                           fontWeight: 700,
                           fontSize: '12px',
-                          color: '#ffffff',
+                          color: 'var(--text-primary)',
                           background: 'linear-gradient(135deg, #ef4444, #b91c1c)',
                           padding: '3px 8px',
                           borderRadius: '6px',
@@ -714,7 +692,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
 
                 {/* Additional Note */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#a1a1aa', marginBottom: '7px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '7px' }}>
                     Source / Verification Note (Optional)
                   </label>
                   <input
@@ -723,10 +701,10 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                       width: '100%',
                       fontSize: '13px',
                       padding: '10px 14px',
-                      background: 'rgba(10, 10, 12, 0.75)',
+                      background: 'var(--bg-card-subtle)',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
                       borderRadius: '10px',
-                      color: '#ffffff',
+                      color: 'var(--text-primary)',
                       outline: 'none'
                     }}
                     placeholder="e.g. Course timetable, Announced in lecture slot"
@@ -742,12 +720,12 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{
                   padding: '20px', borderRadius: '16px',
-                  background: 'linear-gradient(145deg, rgba(32, 32, 37, 0.7) 0%, rgba(20, 20, 24, 0.85) 100%)',
+                  background: 'var(--bg-main)',
                   border: '1px solid rgba(255, 255, 255, 0.1)',
                   boxShadow: '0 8px 30px -8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08)'
                 }}>
                   {Boolean(teacher.fullName || teacher.name) && Boolean(teacher.department) && Boolean(teacher.roomNumber) && Boolean(teacher.linkedIn) && Boolean(teacher.thaparProfileUrl) && Boolean(teacher.photoUrl) && (
-                    <div style={{ textAlign: 'center', padding: '20px 10px', color: '#a1a1aa', fontSize: '13px' }}>
+                    <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--text-secondary)', fontSize: '13px' }}>
                       <CheckCircle2 size={36} color="#10b981" style={{ margin: '0 auto 12px' }} />
                       <div style={{ fontWeight: 600, color: '#f4f4f5', marginBottom: '6px', fontSize: '15px' }}>Profile Fully Verified</div>
                       <div>Thank you! All profile details for this professor have already been crowdsourced and approved.</div>
@@ -755,7 +733,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                   )}
                   {!(teacher.fullName || teacher.name) && (
                     <div style={{ marginBottom: '16px' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: '#a1a1aa', marginBottom: '7px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '7px' }}>
                         <User size={13} color="#ef4444" />
                         <span>Professor's Verified Full Name</span>
                         <span style={{ color: '#ef4444' }}>*</span>
@@ -766,10 +744,10 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                           width: '100%',
                           fontSize: '13.5px',
                           padding: '10px 14px',
-                          background: 'rgba(10, 10, 12, 0.75)',
+                          background: 'var(--bg-card-subtle)',
                           border: '1px solid rgba(255, 255, 255, 0.12)',
                           borderRadius: '10px',
-                          color: '#ffffff',
+                          color: 'var(--text-primary)',
                           outline: 'none'
                         }}
                         placeholder="e.g. Dr. Rajesh Kumar Sharma"
@@ -782,7 +760,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
 
                   {!teacher.department && (
                     <div style={{ marginBottom: '16px' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: '#a1a1aa', marginBottom: '7px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '7px' }}>
                         <Building2 size={13} color="#a1a1aa" />
                         <span>Department</span>
                       </label>
@@ -792,10 +770,10 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                           width: '100%',
                           fontSize: '13.5px',
                           padding: '10px 14px',
-                          background: 'rgba(10, 10, 12, 0.75)',
+                          background: 'var(--bg-card-subtle)',
                           border: '1px solid rgba(255, 255, 255, 0.12)',
                           borderRadius: '10px',
-                          color: '#ffffff',
+                          color: 'var(--text-primary)',
                           outline: 'none'
                         }}
                         placeholder="e.g. Computer Science & Engineering"
@@ -808,7 +786,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
                     {!teacher.roomNumber && (
                       <div>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: '#a1a1aa', marginBottom: '7px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '7px' }}>
                           <MapPin size={13} color="#a1a1aa" />
                           <span>Room / Cabin No.</span>
                         </label>
@@ -818,10 +796,10 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                             width: '100%',
                             fontSize: '13.5px',
                             padding: '10px 14px',
-                            background: 'rgba(10, 10, 12, 0.75)',
+                            background: 'var(--bg-card-subtle)',
                             border: '1px solid rgba(255, 255, 255, 0.12)',
                             borderRadius: '10px',
-                            color: '#ffffff',
+                            color: 'var(--text-primary)',
                             outline: 'none'
                           }}
                           placeholder="e.g. F-Block 402"
@@ -832,7 +810,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                     )}
                     {!teacher.linkedIn && (
                       <div>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: '#a1a1aa', marginBottom: '7px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '7px' }}>
                           <Globe size={13} color="#a1a1aa" />
                           <span>LinkedIn URL</span>
                         </label>
@@ -842,10 +820,10 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                             width: '100%',
                             fontSize: '13.5px',
                             padding: '10px 14px',
-                            background: 'rgba(10, 10, 12, 0.75)',
+                            background: 'var(--bg-card-subtle)',
                             border: '1px solid rgba(255, 255, 255, 0.12)',
                             borderRadius: '10px',
-                            color: '#ffffff',
+                            color: 'var(--text-primary)',
                             outline: 'none'
                           }}
                           placeholder="https://linkedin.com/in/..."
@@ -871,7 +849,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                           rel="noopener noreferrer"
                           style={{
                             display: 'inline-flex', alignItems: 'center', gap: '6px',
-                            fontSize: '12px', color: '#ffffff', textDecoration: 'none',
+                            fontSize: '12px', color: 'var(--text-primary)', textDecoration: 'none',
                             fontWeight: 700, padding: '5px 12px', borderRadius: '8px',
                             background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
                             boxShadow: '0 2px 8px rgba(239, 68, 68, 0.35)',
@@ -891,7 +869,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                           background: 'rgba(10, 10, 12, 0.85)',
                           border: '1px solid rgba(255, 255, 255, 0.12)',
                           borderRadius: '9px',
-                          color: '#ffffff',
+                          color: 'var(--text-primary)',
                           outline: 'none'
                         }}
                         placeholder="e.g. https://csed.thapar.edu/facultydetails/MTY2NA=="
@@ -903,7 +881,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
 
                   {!teacher.photoUrl && (
                     <div>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: '#a1a1aa', marginBottom: '7px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '7px' }}>
                         <Image size={13} color="#a1a1aa" />
                         <span>Upload Photo (Optional)</span>
                       </label>
@@ -918,7 +896,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                         <div style={{
                           display: 'flex', alignItems: 'center', gap: '12px',
                           padding: '10px 14px',
-                          background: 'rgba(10, 10, 12, 0.75)',
+                          background: 'var(--bg-card-subtle)',
                           border: '1px solid rgba(255, 255, 255, 0.12)',
                           borderRadius: '10px'
                         }}>
@@ -931,7 +909,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                               border: '1px solid rgba(255, 255, 255, 0.15)'
                             }}
                           />
-                          <span style={{ flex: 1, fontSize: '13px', color: '#a1a1aa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <span style={{ flex: 1, fontSize: '13px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             Photo selected
                           </span>
                           <button
@@ -963,14 +941,14 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                           background: 'rgba(10, 10, 12, 0.5)',
                           border: '1.5px dashed rgba(255, 255, 255, 0.15)',
                           borderRadius: '10px',
-                          color: '#71717a',
+                          color: 'var(--text-muted)',
                           fontSize: '13px',
                           cursor: 'pointer',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                           transition: 'all 0.2s'
                         }}
                         onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.5)'; e.currentTarget.style.color = '#a78bfa'; e.currentTarget.style.background = 'rgba(139, 92, 246, 0.06)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'; e.currentTarget.style.color = '#71717a'; e.currentTarget.style.background = 'rgba(10, 10, 12, 0.5)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'; e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'rgba(10, 10, 12, 0.5)'; }}
                       >
                         <Upload size={15} />
                         <span>Click to upload photo</span>
@@ -991,13 +969,13 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                 type="button"
                 style={{
                   flex: 1, padding: '12px', borderRadius: '12px',
-                  background: 'rgba(255, 255, 255, 0.05)',
+                  background: 'var(--bg-main)',
                   border: '1px solid rgba(255, 255, 255, 0.1)',
                   color: '#d4d4d8', fontSize: '14px', fontWeight: 600,
                   cursor: 'pointer', transition: 'all 0.2s'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--border-light)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-main)'}
                 onClick={onClose}
                 disabled={submitting}
               >
@@ -1011,7 +989,7 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
                     ? 'linear-gradient(135deg, #d97706 0%, #b45309 100%)' 
                     : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
                   border: 'none',
-                  color: '#ffffff', fontSize: '14px', fontWeight: 700,
+                  color: 'var(--text-primary)', fontSize: '14px', fontWeight: 700,
                   cursor: submitting ? 'not-allowed' : 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                   boxShadow: isCR 
@@ -1047,3 +1025,5 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
     </div>
   );
 };
+
+

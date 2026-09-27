@@ -1,8 +1,5 @@
-"use client";
 import React from 'react';
-import { Tag, ListFilter, Sparkles } from "lucide-react";
-import RadialOrbitalTimeline from "../components/ui/radial-orbital-timeline";
-import { ArrowLeft } from 'lucide-react';
+import { Tag, ListFilter, Sparkles, ArrowLeft, CheckCircle2, Clock, CircleDashed } from "lucide-react";
 
 const timelineData = [
   {
@@ -12,7 +9,6 @@ const timelineData = [
     content: "Predefined student tags on reviews, aggregated into a percentage bar chart on each teacher's profile once they cross a 5-review threshold.",
     icon: Tag,
     status: "in-progress",
-    relatedIds: [2],
     energy: 60,
   },
   {
@@ -22,7 +18,6 @@ const timelineData = [
     content: "Top-5 most-helpful reviews shown by default, 'would take again %' headline stat, and a 'Based on N reviews' trust label next to the chart.",
     icon: ListFilter,
     status: "pending",
-    relatedIds: [1, 3],
     energy: 20,
   },
   {
@@ -32,38 +27,79 @@ const timelineData = [
     content: "Semester-over-semester rating trend, AI-generated one-line summaries, a 'similar teachers' recommender, and a teacher right-to-reply feature.",
     icon: Sparkles,
     status: "pending",
-    relatedIds: [2],
     energy: 5,
   },
 ];
 
 export function Roadmap({ onBack }) {
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100vh', backgroundColor: 'black' }}>
-      <button 
-        onClick={onBack}
-        style={{ 
-          position: 'absolute', 
-          top: '20px', 
-          left: '20px', 
-          zIndex: 999, 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '8px',
-          color: 'white',
-          background: 'rgba(255,255,255,0.1)',
-          border: '1px solid rgba(255,255,255,0.2)',
-          padding: '8px 16px',
-          borderRadius: '8px',
-          cursor: 'pointer'
-        }}
-      >
-        <ArrowLeft size={16} />
-        Back to App
-      </button>
-      <RadialOrbitalTimeline timelineData={timelineData} />
+    <div className="app-container">
+      <div className="navbar">
+        <div className="navbar-inner" style={{ justifyContent: 'flex-start', gap: '24px' }}>
+          <button className="btn btn-secondary btn-sm" onClick={onBack}>
+            <ArrowLeft size={16} />
+            <span>Back</span>
+          </button>
+          <div>
+            <h1 className="brand-title">Product Roadmap</h1>
+            <span className="brand-subtitle">Upcoming Features & Improvements</span>
+          </div>
+        </div>
+      </div>
+      
+      <main className="main-content" style={{ maxWidth: '800px', padding: '40px 20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {timelineData.map((item) => {
+            const Icon = item.icon;
+            const StatusIcon = item.status === 'completed' ? CheckCircle2 : item.status === 'in-progress' ? Clock : CircleDashed;
+            const statusColor = item.status === 'completed' ? 'var(--badge-verified-text)' : item.status === 'in-progress' ? 'var(--primary)' : 'var(--text-muted)';
+            
+            return (
+              <div key={item.id} className="card" style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+                <div style={{ 
+                  backgroundColor: 'var(--bg-main)', 
+                  padding: '16px', 
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-light)',
+                  color: 'var(--text-secondary)'
+                }}>
+                  <Icon size={28} />
+                </div>
+                
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                    <div>
+                      <h3 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 4px 0' }}>{item.title}</h3>
+                      <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600 }}>{item.date}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: statusColor, fontSize: '13px', fontWeight: 600, padding: '4px 10px', backgroundColor: 'var(--bg-main)', borderRadius: 'var(--radius-full)', border: '1px solid var(--border-light)' }}>
+                      <StatusIcon size={14} />
+                      <span style={{ textTransform: 'capitalize' }}>{item.status.replace('-', ' ')}</span>
+                    </div>
+                  </div>
+                  
+                  <p style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 16px 0' }}>
+                    {item.content}
+                  </p>
+                  
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600 }}>
+                      <span>Implementation Progress</span>
+                      <span>{item.energy}%</span>
+                    </div>
+                    <div style={{ height: '6px', backgroundColor: 'var(--bg-main)', borderRadius: '999px', overflow: 'hidden', border: '1px solid var(--border-light)' }}>
+                      <div style={{ height: '100%', width: `${item.energy}%`, backgroundColor: 'var(--primary)' }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </main>
     </div>
   );
 }
 
 export default Roadmap;
+

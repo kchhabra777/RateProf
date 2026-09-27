@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useState, useEffect, useRef } from "react";
 import { Zap, Play, Pause, RotateCw } from "lucide-react";
 
@@ -9,7 +9,23 @@ export default function RadialOrbitalTimeline({
   const [rotationAngle, setRotationAngle] = useState(0);
   const [autoRotate, setAutoRotate] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
+  const [scale, setScale] = useState(1);
   const requestRef = useRef(null);
+
+  useEffect(() => {
+    const handleResize = () => {
+      // Base size is 800px. Scale down if screen is smaller, leaving some padding.
+      const maxAvailable = Math.min(window.innerWidth, window.innerHeight) - 40;
+      if (maxAvailable < 800) {
+        setScale(maxAvailable / 800);
+      } else {
+        setScale(1);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Check if any card is currently expanded
   const hasExpandedCard = Object.values(expandedItems).some(Boolean);
@@ -61,8 +77,8 @@ export default function RadialOrbitalTimeline({
     <div
       style={{
         position: 'relative',
-        width: '100vw',
-        height: '100vh',
+        width: '100%',
+        height: '100%',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -143,7 +159,7 @@ export default function RadialOrbitalTimeline({
       </div>
 
       {/* Central Orbit Container */}
-      <div style={{ position: 'relative', width: '800px', height: '800px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ position: 'relative', width: '800px', height: '800px', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: `scale(${scale})`, transformOrigin: 'center' }}>
         
         {/* Orbital Track Rings */}
         <div 
@@ -172,8 +188,8 @@ export default function RadialOrbitalTimeline({
         <div 
           style={{
             position: 'absolute',
-            width: '84px',
-            height: '84px',
+            width: `${84 * (scale < 0.6 ? 1.5 : 1)}px`,
+            height: `${84 * (scale < 0.6 ? 1.5 : 1)}px`,
             borderRadius: '50%',
             background: 'radial-gradient(circle, #a855f7 0%, #6366f1 60%, #030712 100%)',
             display: 'flex',
@@ -185,8 +201,8 @@ export default function RadialOrbitalTimeline({
         >
           <div 
             style={{
-              width: '38px',
-              height: '38px',
+              width: `${38 * (scale < 0.6 ? 1.5 : 1)}px`,
+              height: `${38 * (scale < 0.6 ? 1.5 : 1)}px`,
               borderRadius: '50%',
               backgroundColor: 'rgba(255, 255, 255, 0.95)',
               boxShadow: '0 0 25px #ffffff',
@@ -195,7 +211,7 @@ export default function RadialOrbitalTimeline({
               justifyContent: 'center'
             }}
           >
-            <Zap size={20} color="#9333ea" />
+            <Zap size={20 * (scale < 0.6 ? 1.5 : 1)} color="#9333ea" />
           </div>
         </div>
 
@@ -205,6 +221,12 @@ export default function RadialOrbitalTimeline({
           const isExpanded = expandedItems[item.id];
           const Icon = item.icon;
           const glowColor = item.glowColor || "#ec4899";
+          
+          const invScale = scale < 0.6 ? (1 / scale) * 0.7 : 1;
+          const nodeSize = 54 * invScale;
+          const iconSize = 24 * invScale;
+          const titleSize = 13 * (scale < 0.6 ? (1 / scale) * 0.8 : 1);
+          const topOffset = 64 * invScale;
 
           return (
             <div
@@ -226,7 +248,7 @@ export default function RadialOrbitalTimeline({
               <div
                 style={{
                   position: 'absolute',
-                  inset: '-14px',
+                  inset: `-${14 * invScale}px`,
                   borderRadius: '50%',
                   background: `radial-gradient(circle, ${glowColor}60 0%, transparent 70%)`,
                   opacity: isExpanded ? 1 : 0.6,
@@ -238,11 +260,11 @@ export default function RadialOrbitalTimeline({
               {/* Node Circular Button */}
               <div
                 style={{
-                  width: '54px',
-                  height: '54px',
+                  width: `${nodeSize}px`,
+                  height: `${nodeSize}px`,
                   borderRadius: '50%',
                   backgroundColor: isExpanded ? glowColor : '#090d16',
-                  border: `2px solid ${isExpanded ? '#ffffff' : glowColor}`,
+                  border: `${2 * invScale}px solid ${isExpanded ? '#ffffff' : glowColor}`,
                   boxShadow: isExpanded 
                     ? `0 0 35px ${glowColor}, 0 0 70px ${glowColor}60` 
                     : `0 0 16px ${glowColor}50`,
@@ -254,18 +276,18 @@ export default function RadialOrbitalTimeline({
                   transition: 'all 0.3s ease'
                 }}
               >
-                <Icon size={24} color="#ffffff" />
+                <Icon size={iconSize} color="#ffffff" />
               </div>
 
               {/* Node Title Label */}
               <div
                 style={{
                   position: 'absolute',
-                  top: '64px',
+                  top: `${topOffset}px`,
                   left: '50%',
                   transform: 'translateX(-50%)',
                   whiteSpace: 'nowrap',
-                  fontSize: '13px',
+                  fontSize: `${titleSize}px`,
                   fontWeight: 700,
                   color: isExpanded ? '#ffffff' : '#cbd5e1',
                   textShadow: isExpanded ? `0 0 12px ${glowColor}` : '0 2px 6px rgba(0,0,0,0.9)',
@@ -282,14 +304,14 @@ export default function RadialOrbitalTimeline({
                 <div
                   style={{
                     position: 'absolute',
-                    top: position.y < 0 ? '80px' : '-290px',
-                    left: position.x < 0 ? '10px' : '-310px',
-                    width: '360px',
+                    top: position.y < 0 ? `${80 * invScale}px` : `-${290 * invScale}px`,
+                    left: position.x < 0 ? `${10 * invScale}px` : `-${310 * invScale}px`,
+                    width: `${360 * invScale}px`,
                     backgroundColor: '#090d16',
-                    border: `1px solid ${glowColor}`,
-                    borderRadius: '18px',
-                    padding: '22px',
-                    boxShadow: `0 25px 60px rgba(0, 0, 0, 0.95), 0 0 40px ${glowColor}40`,
+                    border: `${1 * invScale}px solid ${glowColor}`,
+                    borderRadius: `${18 * invScale}px`,
+                    padding: `${22 * invScale}px`,
+                    boxShadow: `0 ${25 * invScale}px ${60 * invScale}px rgba(0, 0, 0, 0.95), 0 0 ${40 * invScale}px ${glowColor}40`,
                     zIndex: 1000,
                     cursor: 'default',
                     color: '#ffffff'
@@ -297,51 +319,51 @@ export default function RadialOrbitalTimeline({
                   onClick={(e) => e.stopPropagation()}
                 >
                   {/* Card Category & Date Header */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: `${14 * invScale}px` }}>
                     <span 
                       style={{
-                        padding: '4px 10px',
-                        borderRadius: '6px',
+                        padding: `${4 * invScale}px ${10 * invScale}px`,
+                        borderRadius: `${6 * invScale}px`,
                         backgroundColor: `${glowColor}25`,
-                        border: `1px solid ${glowColor}60`,
+                        border: `${1 * invScale}px solid ${glowColor}60`,
                         color: glowColor,
-                        fontSize: '11px',
+                        fontSize: `${11 * invScale}px`,
                         fontWeight: 800,
-                        letterSpacing: '0.5px'
+                        letterSpacing: `${0.5 * invScale}px`
                       }}
                     >
                       {item.category.toUpperCase()}
                     </span>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontFamily: 'monospace' }}>
+                    <span style={{ fontSize: `${11 * invScale}px`, color: '#64748b', fontFamily: 'monospace' }}>
                       {item.date}
                     </span>
                   </div>
 
-                  <h3 style={{ fontSize: '17px', fontWeight: 700, margin: '0 0 10px 0', color: '#f8fafc' }}>
+                  <h3 style={{ fontSize: `${17 * invScale}px`, fontWeight: 700, margin: `0 0 ${10 * invScale}px 0`, color: '#f8fafc' }}>
                     {item.title}
                   </h3>
 
                   {/* Summary Body Text */}
-                  <p style={{ fontSize: '13.5px', lineHeight: 1.6, color: '#cbd5e1', margin: '0 0 18px 0', fontWeight: 450 }}>
+                  <p style={{ fontSize: `${13.5 * invScale}px`, lineHeight: 1.6, color: '#cbd5e1', margin: `0 0 ${18 * invScale}px 0`, fontWeight: 450 }}>
                     {item.content}
                   </p>
 
                   {/* Strength Bar */}
-                  <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '14px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', marginBottom: '6px' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8' }}>
-                        <Zap size={13} color={glowColor} />
+                  <div style={{ borderTop: `${1 * invScale}px solid rgba(255, 255, 255, 0.08)`, paddingTop: `${14 * invScale}px` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: `${12 * invScale}px`, marginBottom: `${6 * invScale}px` }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: `${6 * invScale}px`, color: '#94a3b8' }}>
+                        <Zap size={13 * invScale} color={glowColor} />
                         Consensus Strength
                       </span>
                       <span style={{ fontWeight: 700, color: '#f8fafc', fontFamily: 'monospace' }}>{item.energy}%</span>
                     </div>
-                    <div style={{ width: '100%', height: '6px', backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: '999px', overflow: 'hidden' }}>
+                    <div style={{ width: '100%', height: `${6 * invScale}px`, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: `${999 * invScale}px`, overflow: 'hidden' }}>
                       <div 
                         style={{ 
                           width: `${item.energy}%`, 
                           height: '100%', 
                           backgroundColor: glowColor,
-                          boxShadow: `0 0 10px ${glowColor}`,
+                          boxShadow: `0 0 ${10 * invScale}px ${glowColor}`,
                           borderRadius: '999px'
                         }} 
                       />

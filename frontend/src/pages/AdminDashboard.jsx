@@ -1271,18 +1271,11 @@ export const AdminDashboard = () => {
                 <div style={{ display: 'flex', gap: '12px' }}>
                   <button 
                     onClick={() => setIsAIInsightsOpen(true)}
-                    style={{ 
-                      display: 'flex', alignItems: 'center', gap: '8px', 
-                      padding: '8px 16px', borderRadius: '6px',
-                      background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
-                      color: 'white', fontWeight: 600, border: 'none',
-                      boxShadow: '0 4px 15px rgba(236, 72, 153, 0.3)',
-                      cursor: 'pointer',
-                      fontSize: '13px'
-                    }}
+                    className="btn btn-secondary btn-sm"
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                   >
-                    <Sparkles size={16} />
-                    Generate AI Insights
+                    <BarChart3 size={14} />
+                    Generate Feedback Analytics
                   </button>
                   <button onClick={exportCsv} className="btn btn-secondary btn-sm" style={{ display: 'flex', gap: '6px' }}><Download size={14} /> Export CSV</button>
                 </div>

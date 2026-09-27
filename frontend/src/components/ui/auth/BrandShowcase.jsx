@@ -155,7 +155,7 @@ const BrandShowcase = () => {
         </div>
 
         {/* Features Card — Glassmorphism */}
-        <div style={{
+        <div className="hide-on-mobile" style={{
           background: 'rgba(255, 255, 255, 0.08)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
@@ -290,7 +290,7 @@ const BrandShowcase = () => {
         </div>
 
         {/* Bottom Quote */}
-        <div style={{
+        <div className="hide-on-mobile" style={{
           marginTop: 'clamp(10px, 1.6vh, 16px)',
           display: 'flex',
           alignItems: 'flex-start',

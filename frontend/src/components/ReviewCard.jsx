@@ -1,7 +1,7 @@
 import { getTagTheme } from '../lib/tagTheme';
 import React, { useState } from 'react';
 import { StarRating } from './StarRating';
-import { ThumbsUp, ThumbsDown, MessageSquare, Flag, Send, User, Mail, Award, Tag } from 'lucide-react';
+import { ArrowBigUp, ArrowBigDown, MessageSquare, Flag, Send, User, Mail, Award, Tag } from 'lucide-react';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
@@ -35,31 +35,42 @@ export const ReviewCard = ({ review, onUpdate }) => {
     if (!user || user.role !== 'STUDENT' || isVoting) return;
 
     setIsVoting(true);
+    
+    // --- Optimistic UI Update ---
+    const currentVote = hasVoted;
+    const isUnvoting = currentVote === type;
+    const previousUpvotes = upvotes;
+    const previousDownvotes = downvotes;
+    
+    setHasVoted(isUnvoting ? null : type);
+    if (isUnvoting) {
+      if (type === 'UP') setUpvotes((prev) => Math.max(0, prev - 1));
+      else setDownvotes((prev) => Math.max(0, prev - 1));
+    } else {
+      if (type === 'UP') {
+        setUpvotes((prev) => prev + 1);
+        if (currentVote === 'DOWN') setDownvotes((prev) => Math.max(0, prev - 1));
+      } else {
+        setDownvotes((prev) => prev + 1);
+        if (currentVote === 'UP') setUpvotes((prev) => Math.max(0, prev - 1));
+      }
+    }
+
     try {
-      const isUnvoting = hasVoted === type;
       const res = await api.voteReview(review.reviewId, type, user.id);
       
-      setHasVoted(isUnvoting ? null : type);
-
+      // Sync with authoritative server numbers if provided
       if (typeof res.upvotes === 'number' && typeof res.downvotes === 'number') {
         setUpvotes(res.upvotes);
         setDownvotes(res.downvotes);
-      } else {
-        if (isUnvoting) {
-          if (type === 'UP') setUpvotes((prev) => Math.max(0, prev - 1));
-          else setDownvotes((prev) => Math.max(0, prev - 1));
-        } else {
-          if (type === 'UP') {
-            setUpvotes((prev) => prev + 1);
-            if (hasVoted === 'DOWN') setDownvotes((prev) => Math.max(0, prev - 1));
-          } else {
-            setDownvotes((prev) => prev + 1);
-            if (hasVoted === 'UP') setUpvotes((prev) => Math.max(0, prev - 1));
-          }
-        }
       }
     } catch (err) {
       console.error("Vote failed:", err);
+      // Revert optimistic changes on failure
+      setHasVoted(currentVote);
+      setUpvotes(previousUpvotes);
+      setDownvotes(previousDownvotes);
+      toast.error("Failed to register vote");
     } finally {
       setIsVoting(false);
     }
@@ -69,34 +80,54 @@ export const ReviewCard = ({ review, onUpdate }) => {
     if (!user || user.role !== 'STUDENT' || isVotingReply[replyId]) return;
 
     setIsVotingReply((prev) => ({ ...prev, [replyId]: true }));
+    
+    // --- Optimistic UI Update ---
+    const currentVote = replyVoteState[replyId];
+    const isUnvoting = currentVote === type;
+    
+    const replyIndex = replies.findIndex(r => r.replyId === replyId);
+    if (replyIndex === -1) {
+      setIsVotingReply((prev) => ({ ...prev, [replyId]: false }));
+      return;
+    }
+    const previousReplyState = { ...replies[replyIndex] };
+    
+    setReplyVoteState((prev) => ({ ...prev, [replyId]: isUnvoting ? null : type }));
+    setReplies((prev) =>
+      prev.map((r) => {
+        if (r.replyId === replyId) {
+          if (isUnvoting) {
+            const newUp = type === 'UP' ? Math.max(0, (r.upvotes || 0) - 1) : (r.upvotes || 0);
+            const newDown = type === 'DOWN' ? Math.max(0, (r.downvotes || 0) - 1) : (r.downvotes || 0);
+            return { ...r, upvotes: newUp, downvotes: newDown };
+          } else {
+            const newUp = type === 'UP' ? (r.upvotes || 0) + 1 : (currentVote === 'UP' ? Math.max(0, (r.upvotes || 0) - 1) : (r.upvotes || 0));
+            const newDown = type === 'DOWN' ? (r.downvotes || 0) + 1 : (currentVote === 'DOWN' ? Math.max(0, (r.downvotes || 0) - 1) : (r.downvotes || 0));
+            return { ...r, upvotes: newUp, downvotes: newDown };
+          }
+        }
+        return r;
+      })
+    );
+
     try {
-      const currentVote = replyVoteState[replyId];
-      const isUnvoting = currentVote === type;
       const res = await api.voteReply(replyId, type, user.id);
       
-      setReplyVoteState((prev) => ({ ...prev, [replyId]: isUnvoting ? null : type }));
-
+      // Sync with authoritative server numbers if provided
       setReplies((prev) =>
         prev.map((r) => {
-          if (r.replyId === replyId) {
-            if (typeof res.upvotes === 'number' && typeof res.downvotes === 'number') {
-              return { ...r, upvotes: res.upvotes, downvotes: res.downvotes };
-            }
-            if (isUnvoting) {
-              const newUp = type === 'UP' ? Math.max(0, (r.upvotes || 0) - 1) : (r.upvotes || 0);
-              const newDown = type === 'DOWN' ? Math.max(0, (r.downvotes || 0) - 1) : (r.downvotes || 0);
-              return { ...r, upvotes: newUp, downvotes: newDown };
-            } else {
-              const newUp = type === 'UP' ? (r.upvotes || 0) + 1 : (currentVote === 'UP' ? Math.max(0, (r.upvotes || 0) - 1) : (r.upvotes || 0));
-              const newDown = type === 'DOWN' ? (r.downvotes || 0) + 1 : (currentVote === 'DOWN' ? Math.max(0, (r.downvotes || 0) - 1) : (r.downvotes || 0));
-              return { ...r, upvotes: newUp, downvotes: newDown };
-            }
+          if (r.replyId === replyId && typeof res.upvotes === 'number' && typeof res.downvotes === 'number') {
+            return { ...r, upvotes: res.upvotes, downvotes: res.downvotes };
           }
           return r;
         })
       );
     } catch (err) {
       console.error("Failed to vote on reply:", err);
+      // Revert optimistic changes on failure
+      setReplyVoteState((prev) => ({ ...prev, [replyId]: currentVote }));
+      setReplies((prev) => prev.map((r) => r.replyId === replyId ? previousReplyState : r));
+      toast.error("Failed to register vote");
     } finally {
       setIsVotingReply((prev) => ({ ...prev, [replyId]: false }));
     }
@@ -270,7 +301,7 @@ export const ReviewCard = ({ review, onUpdate }) => {
               }}
               title={user?.role !== 'STUDENT' ? 'Only students can vote' : replyVoteState[reply.replyId] === 'UP' ? 'Click again to remove your upvote' : 'Upvote reply'}
             >
-              <ThumbsUp size={11} />
+              <ArrowBigUp size={14} fill={replyVoteState[reply.replyId] === 'UP' ? 'currentColor' : 'none'} strokeWidth={replyVoteState[reply.replyId] === 'UP' ? 0 : 1.5} />
               <span>{reply.upvotes || 0}</span>
             </button>
 
@@ -289,7 +320,7 @@ export const ReviewCard = ({ review, onUpdate }) => {
               }}
               title={user?.role !== 'STUDENT' ? 'Only students can vote' : replyVoteState[reply.replyId] === 'DOWN' ? 'Click again to remove your downvote' : 'Downvote reply'}
             >
-              <ThumbsDown size={11} />
+              <ArrowBigDown size={14} fill={replyVoteState[reply.replyId] === 'DOWN' ? 'currentColor' : 'none'} strokeWidth={replyVoteState[reply.replyId] === 'DOWN' ? 0 : 1.5} />
               <span>{reply.downvotes || 0}</span>
             </button>
           </div>
@@ -408,12 +439,12 @@ export const ReviewCard = ({ review, onUpdate }) => {
                 padding: '4px 12px', 
                 borderRadius: '20px', 
                 background: theme.bg,
-                border: `1px solid ${theme.borderSubtle}`,
+                border: `1px solid ${theme.border}`,
                 color: theme.color,
-                boxShadow: `0 0 10px ${theme.borderSubtle}`,
+                boxShadow: theme.glow,
                 letterSpacing: '0.01em'
               }}>
-                <Tag size={11} style={{ opacity: 0.8 }} />
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: theme.color, boxShadow: theme.glow, marginRight: '2px' }} />
                 #{tag}
               </span>
             );
@@ -427,48 +458,82 @@ export const ReviewCard = ({ review, onUpdate }) => {
       </p>
 
       {/* Action Bar (Upvote, Downvote, Replies, Flag) */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid var(--border-light)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button
-            type="button"
-            onClick={() => handleVote('UP')}
-            disabled={isVoting || isOwnReview || user?.role !== 'STUDENT'}
-            className="btn btn-subtle btn-sm"
-            style={{
-              color: hasVoted === 'UP' ? 'var(--badge-verified-text)' : 'inherit',
-              fontWeight: hasVoted === 'UP' ? 700 : 500,
-              opacity: (isOwnReview || user?.role !== 'STUDENT') ? 0.6 : 1,
-              cursor: (isOwnReview || user?.role !== 'STUDENT') ? 'not-allowed' : isVoting ? 'default' : 'pointer'
-            }}
-            title={user?.role !== 'STUDENT' ? 'Only students can vote' : isOwnReview ? 'You cannot vote on your own review' : hasVoted === 'UP' ? 'Click again to remove your helpful vote' : 'Mark as helpful'}
-          >
-            <ThumbsUp size={14} />
-            <span>Helpful ({upvotes})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleVote('DOWN')}
-            disabled={isVoting || isOwnReview || user?.role !== 'STUDENT'}
-            className="btn btn-subtle btn-sm"
-            style={{
-              color: hasVoted === 'DOWN' ? 'var(--primary)' : 'inherit',
-              fontWeight: hasVoted === 'DOWN' ? 700 : 500,
-              opacity: (isOwnReview || user?.role !== 'STUDENT') ? 0.6 : 1,
-              cursor: (isOwnReview || user?.role !== 'STUDENT') ? 'not-allowed' : isVoting ? 'default' : 'pointer'
-            }}
-            title={user?.role !== 'STUDENT' ? 'Only students can vote' : isOwnReview ? 'You cannot vote on your own review' : hasVoted === 'DOWN' ? 'Click again to remove your downvote' : 'Mark as unhelpful'}
-          >
-            <ThumbsDown size={14} />
-            <span>({downvotes})</span>
-          </button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid var(--border-light)', flexWrap: 'wrap', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          
+          {/* Reddit Style Vote Pill */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: 'var(--bg-card-subtle)',
+            borderRadius: '20px',
+            border: '1px solid var(--border-light)',
+            overflow: 'hidden'
+          }}>
+            <button
+              type="button"
+              onClick={() => handleVote('UP')}
+              disabled={isVoting || isOwnReview || user?.role !== 'STUDENT'}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '6px 8px',
+                background: 'transparent', border: 'none',
+                cursor: (isOwnReview || user?.role !== 'STUDENT') ? 'not-allowed' : isVoting ? 'default' : 'pointer',
+                color: hasVoted === 'UP' ? '#ef4444' : 'var(--text-secondary)',
+                opacity: (isOwnReview || user?.role !== 'STUDENT') ? 0.5 : 1,
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+              title={user?.role !== 'STUDENT' ? 'Only students can vote' : isOwnReview ? 'You cannot vote on your own review' : hasVoted === 'UP' ? 'Click again to remove your upvote' : 'Upvote'}
+            >
+              <ArrowBigUp size={18} fill={hasVoted === 'UP' ? '#ef4444' : 'none'} strokeWidth={hasVoted === 'UP' ? 0 : 1.5} />
+            </button>
+            <span style={{
+              fontSize: '13px',
+              fontWeight: 700,
+              minWidth: '22px',
+              textAlign: 'center',
+              color: hasVoted === 'UP' ? '#ef4444' : hasVoted === 'DOWN' ? '#3b82f6' : 'var(--text-primary)'
+            }}>
+              {upvotes - downvotes}
+            </span>
+            <button
+              type="button"
+              onClick={() => handleVote('DOWN')}
+              disabled={isVoting || isOwnReview || user?.role !== 'STUDENT'}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '6px 8px',
+                background: 'transparent', border: 'none',
+                cursor: (isOwnReview || user?.role !== 'STUDENT') ? 'not-allowed' : isVoting ? 'default' : 'pointer',
+                color: hasVoted === 'DOWN' ? '#3b82f6' : 'var(--text-secondary)',
+                opacity: (isOwnReview || user?.role !== 'STUDENT') ? 0.5 : 1,
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+              title={user?.role !== 'STUDENT' ? 'Only students can vote' : isOwnReview ? 'You cannot vote on your own review' : hasVoted === 'DOWN' ? 'Click again to remove your downvote' : 'Downvote'}
+            >
+              <ArrowBigDown size={18} fill={hasVoted === 'DOWN' ? '#3b82f6' : 'none'} strokeWidth={hasVoted === 'DOWN' ? 0 : 1.5} />
+            </button>
+          </div>
 
           <button
             onClick={() => setShowReplies(!showReplies)}
             className="btn btn-subtle btn-sm"
+            style={{ 
+              borderRadius: '20px', 
+              background: 'var(--bg-card-subtle)', 
+              padding: '6px 14px',
+              border: '1px solid var(--border-light)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
           >
             <MessageSquare size={14} />
-            <span>Discussion ({replies.length})</span>
+            <span style={{ fontWeight: 600, fontSize: '13px' }}>{replies.length}</span>
           </button>
         </div>
 
@@ -477,11 +542,19 @@ export const ReviewCard = ({ review, onUpdate }) => {
             onClick={handleFlag}
             disabled={flagged}
             className="btn btn-subtle btn-sm"
-            style={{ color: flagged ? 'var(--text-muted)' : 'var(--text-secondary)' }}
+            style={{ 
+              borderRadius: '20px', 
+              background: 'transparent', 
+              padding: '6px 10px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              color: flagged ? 'var(--text-muted)' : 'var(--text-secondary)'
+            }}
             title="Report review for moderation"
           >
-            <Flag size={13} />
-            <span>{flagged ? 'Reported' : 'Report'}</span>
+            <Flag size={14} />
+            <span style={{ fontSize: '13px' }}>{flagged ? 'Reported' : 'Report'}</span>
           </button>
         )}
       </div>

@@ -45,7 +45,9 @@ export const Navbar = ({ currentView, setCurrentView }) => {
                   <span className="badge badge-student">
                     <User size={12} />
                     {user.studentProfile?.rollNumber || user.detectedBatch || 'Student'}
-                    {user.studentProfile?.branch ? ` (${user.studentProfile.branch})` : ''}
+                    {user.studentProfile?.branch ? (
+                      <span className="hidden sm:inline"> ({user.studentProfile.branch})</span>
+                    ) : ''}
                   </span>
                 ) : (
                   <span className="badge badge-teacher">

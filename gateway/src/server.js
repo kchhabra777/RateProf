@@ -69,6 +69,12 @@ app.use(
   createProxyMiddleware(proxyOptions(`${AUTH_SERVICE_URL}/admin`))
 );
 
+// Proxy /api/support/* and /support/* -> AUTH_SERVICE_URL/support/*
+app.use(
+  ["/api/support", "/support"],
+  createProxyMiddleware(proxyOptions(`${AUTH_SERVICE_URL}/support`))
+);
+
 // Proxy /api/reviews/* and /reviews/* -> FEEDBACK_SERVICE_URL/reviews/*
 app.use(
   ["/api/reviews", "/reviews"],
@@ -86,6 +92,7 @@ app.listen(PORT, () => {
   console.log(`   Auth routes     -> ${AUTH_SERVICE_URL}/auth`);
   console.log(`   Profiles routes -> ${AUTH_SERVICE_URL}/profiles`);
   console.log(`   Courses routes  -> ${AUTH_SERVICE_URL}/courses`);
+  console.log(`   Support routes  -> ${AUTH_SERVICE_URL}/support`);
   console.log(`   Reviews routes  -> ${FEEDBACK_SERVICE_URL}/reviews`);
   console.log(`   Ratings routes  -> ${FEEDBACK_SERVICE_URL}/ratings`);
 });

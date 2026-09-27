@@ -5,6 +5,7 @@ import { TeacherCard } from '../components/TeacherCard';
 import { ReviewCard } from '../components/ReviewCard';
 import { WriteReviewModal } from '../components/WriteReviewModal';
 import { StarRating } from '../components/StarRating';
+import { getTagTheme } from '../lib/tagTheme';
 import {
   Users,
   BookOpen,
@@ -22,7 +23,8 @@ import {
   Edit3,
   User,
   Trophy,
-  HeartHandshake
+  HeartHandshake,
+  Star
 } from 'lucide-react';
 import { Sparkles } from 'lucide-react';
 import { updatePageSEO, buildTeacherSchema } from '../utils/seo';
@@ -367,8 +369,7 @@ export const StudentDashboard = () => {
       )}
 
       {/* Desktop Tabs (Hidden on mobile) */}
-      <div className="desktop-tabs" style={{ 
-        display: 'flex', 
+      <div className="desktop-tabs hidden md:flex" style={{ 
         gap: '12px', 
         marginBottom: '24px',
         borderBottom: '1px solid var(--border-light)',
@@ -484,17 +485,9 @@ export const StudentDashboard = () => {
 
           {/* Teacher Profile Summary Banner */}
           <div className="card" style={{ marginBottom: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-                <div style={{
-                  width: '160px',
-                  height: '160px',
-                  borderRadius: '50%',
-                  padding: '4px',
-                  background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%)',
-                  boxShadow: '0 12px 32px rgba(139, 92, 246, 0.4)',
-                  flexShrink: 0
-                }}>
+            <div className="profile-header-wrap" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+              <div className="profile-header-info" style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+                <div className="profile-avatar-container">
                   <img
                     src={
                       selectedTeacher.photoUrl ||
@@ -514,7 +507,7 @@ export const StudentDashboard = () => {
                   }}
                 />
                 </div>
-                <div>
+                <div style={{ flex: 1 }}>
                   <h2 style={{ fontSize: '24px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                     <span>{selectedTeacher.fullName}</span>
                     {selectedTeacher.code && !selectedTeacher.fullName.includes(selectedTeacher.code) && (
@@ -588,74 +581,201 @@ export const StudentDashboard = () => {
                     )}
                   </div>
 
+                  {/* ACTION BUTTONS (Moved here to sit below profile info) */}
+                  <div className="profile-action-buttons" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '16px' }}>
+                    <button
+                      onClick={() => {
+                        const publicUrl = `${window.location.origin}/teacher/${encodeURIComponent(selectedTeacher.id || selectedTeacher.userId)}`;
+                        try {
+                          navigator.clipboard.writeText(publicUrl);
+                          toast.success('Public profile link copied to clipboard!', {
+                            description: 'Share it with your batchmates or use the quick channels.'
+                          });
+                        } catch (e) {
+                          // Handled by modal copy
+                        }
+                        setSharingTeacher(selectedTeacher);
+                      }}
+                      className="btn btn-secondary"
+                      title="Share profile to batch WhatsApp groups, Reddit, or copy link"
+                    >
+                      <Share2 size={16} />
+                      <span>Share Profile</span>
+                    </button>
+                    <button
+                      onClick={() => setSuggestTeacher(selectedTeacher)}
+                      className="btn btn-secondary"
+                      title="Add missing courses or info to this faculty member"
+                    >
+                      <Edit3 size={16} />
+                      <span>Add Info / Course</span>
+                    </button>
+                    {eligibleTeachers.some(t => (t.id || t.userId) === (selectedTeacher.id || selectedTeacher.userId)) ? (
+                      <button
+                        onClick={() => setReviewingTeacher(selectedTeacher)}
+                        className="btn btn-primary"
+                      >
+                        <MessageSquarePlus size={16} />
+                        <span>Write Feedback Review</span>
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        className="btn btn-secondary"
+                        title="You can only write reviews for teachers who taught your batch/section."
+                        style={{ opacity: 0.6, cursor: 'not-allowed' }}
+                      >
+                        <MessageSquarePlus size={16} />
+                        <span>Not Eligible to Review</span>
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => setIsAIInsightsOpen(true)}
+                      style={{ 
+                        position: 'relative',
+                        overflow: 'hidden',
+                        display: 'flex', alignItems: 'center', gap: '8px', 
+                        padding: '9px 18px', borderRadius: '10px',
+                        background: 'linear-gradient(135deg, var(--primary) 0%, #4a0000 100%)',
+                        color: 'white', fontWeight: 600, border: '1px solid rgba(255, 255, 255, 0.2)',
+                        boxShadow: '0 4px 18px rgba(128, 0, 0, 0.3)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <BorderBeam size={80} duration={6} borderWidth={1.5} colorFrom="#ffffff" colorTo="var(--primary)" />
+                      <Sparkles size={18} style={{ position: 'relative', zIndex: 1, color: '#ffffff' }} />
+                      <span style={{ position: 'relative', zIndex: 1 }}>Generate Faculty Insights</span>
+                    </button>
+                  </div>
 
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => {
-                    const publicUrl = `${window.location.origin}/teacher/${encodeURIComponent(selectedTeacher.id || selectedTeacher.userId)}`;
-                    try {
-                      navigator.clipboard.writeText(publicUrl);
-                      toast.success('Public profile link copied to clipboard!', {
-                        description: 'Share it with your batchmates or use the quick channels.'
-                      });
-                    } catch (e) {
-                      // Handled by modal copy
-                    }
-                    setSharingTeacher(selectedTeacher);
-                  }}
-                  className="btn btn-secondary"
-                  title="Share profile to batch WhatsApp groups, Reddit, or copy link"
-                >
-                  <Share2 size={16} />
-                  <span>Share Profile</span>
-                </button>
-                <button
-                  onClick={() => setSuggestTeacher(selectedTeacher)}
-                  className="btn btn-secondary"
-                  title="Add missing courses or info to this faculty member"
-                >
-                  <Edit3 size={16} />
-                  <span>Add Info / Course</span>
-                </button>
-                {eligibleTeachers.some(t => (t.id || t.userId) === (selectedTeacher.id || selectedTeacher.userId)) ? (
-                  <button
-                    onClick={() => setReviewingTeacher(selectedTeacher)}
-                    className="btn btn-primary"
-                  >
-                    <MessageSquarePlus size={16} />
-                    <span>Write Feedback Review</span>
-                  </button>
-                ) : (
-                  <button
-                    disabled
-                    className="btn btn-secondary"
-                    title="You can only write reviews for teachers who taught your batch/section."
-                    style={{ opacity: 0.6, cursor: 'not-allowed' }}
-                  >
-                    <MessageSquarePlus size={16} />
-                    <span>Not Eligible to Review</span>
-                  </button>
+              {/* RATING DISTRIBUTION (Right Side) */}
+              <div className="rating-dist-card" style={{ 
+                flexShrink: 0, 
+                width: '100%', 
+                maxWidth: '280px', 
+                background: 'var(--bg-card-subtle)', 
+                padding: '16px', 
+                borderRadius: 'var(--radius-md)', 
+                border: '1px solid var(--border-light)' 
+              }}>
+                <h4 style={{ fontSize: '11px', fontWeight: 700, marginBottom: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Rating Distribution
+                </h4>
+                {(() => {
+                  const dist = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+                  let total = selectedTeacherReviews.length;
+                  selectedTeacherReviews.forEach(r => {
+                    if (r.rating >= 1 && r.rating <= 5) dist[Math.round(r.rating)]++;
+                  });
+                  if (total === 0) total = 1; // avoid divide by zero
+                  
+                  return [5, 4, 3, 2, 1].map(star => {
+                    const count = dist[star];
+                    const percent = (count / total) * 100;
+                    return (
+                      <div key={star} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 600, width: '10px', color: 'var(--text-secondary)' }}>{star}</span>
+                        <Star size={11} color="var(--star-gold)" fill="var(--star-gold)" />
+                        <div style={{ flex: 1, height: '6px', background: 'var(--border-light)', borderRadius: '3px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', background: 'var(--star-gold)', width: `${percent}%`, borderRadius: '3px' }}></div>
+                        </div>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', width: '20px', textAlign: 'right' }}>{count}</span>
+                      </div>
+                    );
+                  });
+                })()}
+                {selectedTeacherReviews.length > 0 && selectedTeacherReviews.length < (selectedTeacherRatings?.totalReviews || 0) && (
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '8px', fontStyle: 'italic' }}>
+                    Based on recent {selectedTeacherReviews.length} reviews
+                  </div>
                 )}
-                <button 
-                  onClick={() => setIsAIInsightsOpen(true)}
-                  style={{ 
-                    position: 'relative',
-                    overflow: 'hidden',
-                    display: 'flex', alignItems: 'center', gap: '8px', 
-                    padding: '9px 18px', borderRadius: '10px',
-                    background: 'linear-gradient(135deg, #18122B 0%, #2D033B 100%)',
-                    color: 'white', fontWeight: 600, border: '1px solid rgba(168, 85, 247, 0.4)',
-                    boxShadow: '0 4px 18px rgba(168, 85, 247, 0.25)',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <BorderBeam size={80} duration={6} borderWidth={1.5} colorFrom="#ec4899" colorTo="#a855f7" />
-                  <Sparkles size={18} style={{ position: 'relative', zIndex: 1, color: '#f472b6' }} />
-                  <span style={{ position: 'relative', zIndex: 1 }}>Generate AI Insights</span>
-                </button>
+              </div>
+
+              {/* COMMUNITY TAGS (Fills empty space) */}
+              <div className="community-tags-card" style={{ 
+                flex: 1, 
+                display: 'flex', 
+                flexDirection: 'column',
+                background: 'var(--bg-card)',
+                padding: '16px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-light)',
+                minWidth: '300px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <h4 style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+                    Community Tags
+                  </h4>
+                  {selectedTeacherTags && selectedTeacherTags.sufficientData && (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
+                      Based on {selectedTeacherTags.totalReviewsWithTags} reviews
+                    </span>
+                  )}
+                </div>
+
+                {reviewsLoading || !selectedTeacherTags ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '13px', padding: '12px 0' }}>
+                    <div style={{ width: '16px', height: '16px', border: '2px solid var(--border-light)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+                    <span>Loading tag statistics...</span>
+                  </div>
+                ) : !selectedTeacherTags.sufficientData ? (
+                  <div style={{ color: 'var(--text-muted)', fontSize: '13px', fontStyle: 'italic', marginTop: '12px' }}>
+                    {selectedTeacherTags.needed > 0
+                      ? `${selectedTeacherTags.needed} more review${selectedTeacherTags.needed > 1 ? 's' : ''} needed to unlock tag insights.`
+                      : 'No student tags submitted for this teacher yet.'}
+                  </div>
+                ) : selectedTeacherTags.stats?.length === 0 ? (
+                  <div style={{ color: 'var(--text-muted)', fontSize: '13px', fontStyle: 'italic', marginTop: '12px' }}>
+                    No community tags recorded for this faculty member yet.
+                  </div>
+                ) : (
+                  <div style={{ width: '100%', height: 180 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        layout="vertical"
+                        data={selectedTeacherTags.stats}
+                        margin={{ top: 0, right: 40, left: 0, bottom: 0 }}
+                      >
+                        <XAxis type="number" hide domain={[0, 100]} />
+                        <YAxis 
+                          type="category" 
+                          dataKey="name" 
+                          axisLine={false} 
+                          tickLine={false} 
+                          width={140}
+                          tick={{ fill: 'var(--text-primary)', fontSize: 11, fontWeight: 600 }}
+                        />
+                        <Tooltip 
+                          cursor={{ fill: 'var(--bg-card-subtle)' }} 
+                          contentStyle={{ backgroundColor: 'var(--bg-panel)', borderColor: 'var(--border-light)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+                          itemStyle={{ fontWeight: 700 }}
+                          formatter={(val) => [`${val}%`, 'Frequency']}
+                        />
+                        <Bar 
+                          dataKey="percentage" 
+                          radius={[6, 6, 6, 6]} 
+                          barSize={12} 
+                          background={{ fill: 'var(--bg-card-subtle)', radius: [6, 6, 6, 6] }}
+                          label={{ position: 'right', fill: 'var(--text-primary)', fontSize: 12, fontWeight: 700, formatter: (val) => `${val}%` }}
+                        >
+                          {selectedTeacherTags.stats.map((entry, index) => {
+                            const theme = getTagTheme(entry.name);
+                            return (
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={theme.color} 
+                                style={{ filter: `drop-shadow(0 0 6px ${theme.border})` }} 
+                              />
+                            );
+                          })}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -699,76 +819,6 @@ export const StudentDashboard = () => {
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Verified student evaluations</span>
               </div>
             </div>
-          </div>
-
-          {/* Community Tags */}
-          <div className="card" style={{ marginBottom: '24px', padding: '24px' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>Community Tags</h3>
-            {selectedTeacherTags && selectedTeacherTags.sufficientData && (
-              <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '20px' }}>
-                Based on {selectedTeacherTags.totalReviewsWithTags} reviews
-              </p>
-            )}
-            
-            {reviewsLoading || !selectedTeacherTags ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '14px', padding: '12px 0' }}>
-                <div style={{ width: '16px', height: '16px', border: '2px solid var(--border-light)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-                <span>Loading tag statistics...</span>
-              </div>
-            ) : !selectedTeacherTags.sufficientData ? (
-              <div style={{ color: 'var(--text-muted)', fontSize: '14px', fontStyle: 'italic', marginTop: '12px' }}>
-                {selectedTeacherTags.needed > 0
-                  ? `${selectedTeacherTags.needed} more review${selectedTeacherTags.needed > 1 ? 's' : ''} needed to unlock tag insights for this teacher.`
-                  : 'No student tags submitted for this teacher yet.'}
-              </div>
-            ) : selectedTeacherTags.stats?.length === 0 ? (
-              <div style={{ color: 'var(--text-muted)', fontSize: '14px', fontStyle: 'italic', marginTop: '12px' }}>
-                No community tags recorded for this faculty member yet.
-              </div>
-            ) : (
-              <div style={{ width: '100%', height: 280 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    layout="vertical"
-                    data={selectedTeacherTags.stats}
-                    margin={{ top: 10, right: 40, left: 10, bottom: 0 }}
-                  >
-                    <defs>
-                      <linearGradient id="barGradient" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.7}/>
-                        <stop offset="100%" stopColor="var(--primary)" stopOpacity={1}/>
-                      </linearGradient>
-                    </defs>
-                    <XAxis type="number" hide domain={[0, 100]} />
-                    <YAxis 
-                      type="category" 
-                      dataKey="name" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      width={170}
-                      tick={{ fill: 'var(--text-primary)', fontSize: 12.5, fontWeight: 500 }}
-                    />
-                    <Tooltip 
-                      cursor={{ fill: 'rgba(255,255,255,0.03)' }} 
-                      contentStyle={{ backgroundColor: 'var(--bg-panel)', borderColor: 'var(--border-light)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
-                      itemStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
-                      formatter={(val) => [`${val}%`, 'Frequency']}
-                    />
-                    <Bar 
-                      dataKey="percentage" 
-                      radius={[4, 4, 4, 4]} 
-                      barSize={16} 
-                      background={{ fill: 'rgba(255,255,255,0.04)', radius: [4, 4, 4, 4] }}
-                      label={{ position: 'right', fill: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, formatter: (val) => `${val}%` }}
-                    >
-                      {selectedTeacherTags.stats.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill="url(#barGradient)" />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
           </div>
 
           {/* Reviews List */}
@@ -964,61 +1014,35 @@ export const StudentDashboard = () => {
               ]}
             />
 
-            {/* Quick Actions & Search Input */}
+            {/* Search Input */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => setIsCmdMenuOpen(true)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '7px 14px',
-                  borderRadius: '10px',
-                  border: '1px solid var(--border-light)',
-                  background: 'var(--bg-card)',
-                  color: 'var(--text-secondary)',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.5)';
-                  e.currentTarget.style.color = '#fff';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--border-light)';
-                  e.currentTarget.style.color = 'var(--text-secondary)';
-                }}
-              >
-                <Search size={14} color="#a855f7" />
-                <span>Quick Finder</span>
-                <kbd style={{
-                  padding: '2px 6px',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  borderRadius: '4px',
-                  background: 'rgba(255,255,255,0.08)',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  color: 'var(--text-secondary)',
-                  fontFamily: 'monospace'
-                }}>
-                  ⌘K
-                </kbd>
-              </button>
-
-              <div style={{ position: 'relative', minWidth: '240px' }}>
-                <Search size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <div style={{ position: 'relative', minWidth: '280px' }}>
+                <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input
                   type="text"
                   className="form-input"
                   placeholder="Filter teachers by name or dept..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{ paddingLeft: '32px', fontSize: '13px' }}
+                  style={{ paddingLeft: '36px', paddingRight: '40px', fontSize: '13px', width: '100%' }}
                 />
+                <div style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)' }}>
+                  <kbd style={{
+                    padding: '2px 6px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    borderRadius: '4px',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-light)',
+                    color: 'var(--text-secondary)',
+                    fontFamily: 'monospace',
+                    cursor: 'pointer'
+                  }}
+                  title="Global Quick Search"
+                  onClick={() => setIsCmdMenuOpen(true)}>
+                    ⌘K
+                  </kbd>
+                </div>
               </div>
             </div>
           </div>

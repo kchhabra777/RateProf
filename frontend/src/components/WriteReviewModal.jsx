@@ -208,10 +208,13 @@ export const WriteReviewModal = ({ teacher, onClose, onSuccess }) => {
                     type="button"
                     onClick={() => handleTagClick(tag)}
                     style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
                       padding: '6px 14px',
                       borderRadius: '20px',
                       fontSize: '13px',
-                      fontWeight: isSelected ? 700 : 500,
+                      fontWeight: isSelected ? 700 : 600,
                       border: `1px solid ${isSelected ? theme.border : theme.borderSubtle}`,
                       cursor: 'pointer',
                       transition: 'all 0.18s ease',
@@ -221,6 +224,7 @@ export const WriteReviewModal = ({ teacher, onClose, onSuccess }) => {
                       boxShadow: isSelected ? theme.glow : 'none'
                     }}
                   >
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: theme.color, boxShadow: isSelected ? theme.glow : 'none' }} />
                     #{tag}
                   </button>
                 );

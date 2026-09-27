@@ -88,25 +88,31 @@ export const AuthPage = () => {
         @media (max-width: 900px) {
           .auth-split-container {
             flex-direction: column;
-            height: auto;
-            max-height: none;
-            overflow-y: auto;
+            height: 100dvh;
+            max-height: 100dvh;
+            overflow: hidden;
+            position: fixed;
+            inset: 0;
           }
           .auth-left-panel {
-            width: 100%;
-            height: 40vh;
-            max-height: 40vh;
+            display: none; /* Completely hide on mobile */
           }
           .auth-right-panel {
             width: 100%;
-            height: auto;
-            min-height: 60vh;
-            max-height: none;
+            height: 100dvh;
+            max-height: 100dvh;
           }
           .auth-login-wrapper {
-            height: auto;
-            max-height: none;
+            height: 100%;
+            max-height: 100%;
             padding: 24px 16px;
+            justify-content: flex-start;
+          }
+          .auth-center-content {
+            margin: 24px auto 32px auto !important; /* Avoid vertical auto margin which causes top cutoff */
+          }
+          .hide-on-mobile {
+            display: none !important;
           }
         }
       `}</style>
@@ -151,7 +157,7 @@ export const AuthPage = () => {
               </div>
 
               {/* Center Content */}
-              <div style={{
+              <div className="auth-center-content" style={{
                 width: '100%',
                 maxWidth: '400px',
                 margin: 'auto',

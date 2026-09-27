@@ -190,7 +190,7 @@ export function PublicTeacherProfile({ teacherId, onBack, onLoginClick }) {
                   }).map((off, idx) => (
                     <span key={idx} className="badge badge-neutral" style={{ fontSize: '12px', padding: '4px 10px' }}>
                       <BookOpen size={12} style={{ marginRight: '4px' }} />
-                      {off.courseCode} · {ltpLabel[off.ltp] || off.ltp || 'Lecture'}
+                      {off.courseCode}{off.courseName ? ` - ${off.courseName}` : ''} · {ltpLabel[off.ltp] || off.ltp || 'Lecture'}
                     </span>
                   ))}
                 </div>

@@ -57,8 +57,7 @@ export function App() {
                   padding: '6px 16px', 
                   borderRadius: '20px', 
                   background: theme.bg, 
-                  border: `1px solid ${theme.borderSubtle}`,
-                  boxShadow: `0 0 10px ${theme.borderSubtle}`
+                  border: `1px solid ${theme.borderSubtle}`
                 }}
               >
                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: theme.border }} />

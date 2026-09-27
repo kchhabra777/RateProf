@@ -10,7 +10,7 @@ const EMOJI_LEVELS = [
     color: '#ef4444',
     bg: 'rgba(239, 68, 68, 0.12)',
     border: 'rgba(239, 68, 68, 0.35)',
-    glow: '0 0 12px rgba(239, 68, 68, 0.35)',
+    glow: 'none',
   },
   {
     rating: 2,
@@ -20,7 +20,7 @@ const EMOJI_LEVELS = [
     color: '#f97316',
     bg: 'rgba(249, 115, 22, 0.12)',
     border: 'rgba(249, 115, 22, 0.35)',
-    glow: '0 0 12px rgba(249, 115, 22, 0.35)',
+    glow: 'none',
   },
   {
     rating: 3,
@@ -30,7 +30,7 @@ const EMOJI_LEVELS = [
     color: '#eab308',
     bg: 'rgba(234, 179, 8, 0.14)',
     border: 'rgba(234, 179, 8, 0.35)',
-    glow: '0 0 12px rgba(234, 179, 8, 0.35)',
+    glow: 'none',
   },
   {
     rating: 4,
@@ -40,7 +40,7 @@ const EMOJI_LEVELS = [
     color: '#10b981',
     bg: 'rgba(16, 185, 129, 0.12)',
     border: 'rgba(16, 185, 129, 0.35)',
-    glow: '0 0 12px rgba(16, 185, 129, 0.35)',
+    glow: 'none',
   },
   {
     rating: 5,
@@ -50,7 +50,7 @@ const EMOJI_LEVELS = [
     color: '#f59e0b',
     bg: 'rgba(245, 158, 11, 0.15)',
     border: 'rgba(245, 158, 11, 0.45)',
-    glow: '0 0 16px rgba(245, 158, 11, 0.45)',
+    glow: 'none',
   },
 ];
 
@@ -78,6 +78,8 @@ export const EmojiRatingSlider = ({ rating = 5, onRatingChange }) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
           marginBottom: '14px',
           paddingBottom: '12px',
           borderBottom: '1px solid var(--border-light, #e2e8f0)',
@@ -202,7 +204,7 @@ export const EmojiRatingSlider = ({ rating = 5, onRatingChange }) => {
                 cursor: 'pointer',
                 transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
                 transform: isSelected || isHovered ? 'translateY(-2px) scale(1.06)' : 'scale(1)',
-                boxShadow: isSelected ? level.glow : 'none',
+                boxShadow: 'none',
                 opacity: isSelected ? 1 : isHovered ? 0.9 : 0.65,
               }}
             >

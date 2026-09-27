@@ -57,8 +57,8 @@ export function AnimatedTabs({
                   position: "absolute",
                   inset: 0,
                   borderRadius: "8px",
-                  background: "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)",
-                  boxShadow: "0 2px 14px rgba(236, 72, 153, 0.4)",
+                  background: "var(--primary)",
+                  boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
                   zIndex: -1
                 }}
                 transition={{ type: "spring", stiffness: 450, damping: 35 }}

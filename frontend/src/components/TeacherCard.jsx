@@ -176,7 +176,7 @@ export const TeacherCard = ({ teacher, ratings, onViewReviews, onWriteReview, on
             raw.forEach(c => {
               const key = `${c.courseCode}-${c.ltp || 'L'}`;
               if (!courseMap[key]) {
-                courseMap[key] = { courseCode: c.courseCode, ltp: c.ltp, batches: new Set() };
+                courseMap[key] = { courseCode: c.courseCode, courseName: c.courseName, ltp: c.ltp, batches: new Set() };
               }
               if (c.batchTaught) courseMap[key].batches.add(c.batchTaught);
             });
@@ -186,7 +186,7 @@ export const TeacherCard = ({ teacher, ratings, onViewReviews, onWriteReview, on
             
             return grouped.map((c, i) => (
               <span key={i} className="badge badge-neutral" style={{ fontSize: '11.5px', lineHeight: '1.4' }}>
-                {c.courseCode} · {ltpLabel[c.ltp] || c.ltp || 'Lecture'}
+                {c.courseCode}{c.courseName ? ` - ${c.courseName}` : ''} · {ltpLabel[c.ltp] || c.ltp || 'Lecture'}
                 {c.batches.size > 0 && (
                   <span style={{ opacity: 0.8, marginLeft: '4px' }}>
                     ({Array.from(c.batches).join(', ')})

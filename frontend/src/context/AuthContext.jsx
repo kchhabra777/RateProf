@@ -88,6 +88,9 @@ export const AuthProvider = ({ children }) => {
           setUser(null);
         }
 
+        // Only show loading if user is not already set (prevents flashing on re-syncs)
+        if (!user) setLoading(true);
+
         try {
           if (email) {
             setAuthError('');
@@ -130,6 +133,7 @@ export const AuthProvider = ({ children }) => {
         // Fallback to local token check if exists
         const localToken = localStorage.getItem('campus_token');
         if (localToken) {
+          if (!user) setLoading(true);
           try {
             const data = await api.getMe();
             setUser(data.user);
