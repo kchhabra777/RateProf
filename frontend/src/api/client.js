@@ -162,6 +162,25 @@ export const api = {
     method: "POST",
     body: JSON.stringify({ email, password })
   }),
+  forgotPasswordSendOtp: (email) => request("/auth/forgot-password/send-otp", {
+    method: "POST",
+    body: JSON.stringify({ email })
+  }),
+  forgotPasswordReset: ({ email, otp, newPassword }) => request("/auth/forgot-password/reset", {
+    method: "POST",
+    body: JSON.stringify({ email, otp, newPassword })
+  }),
+  changePasswordSendOtp: () => request("/auth/change-password/send-otp", {
+    method: "POST"
+  }),
+  changePasswordVerifyAndUpdate: ({ otp, newPassword }) => request("/auth/change-password/verify-and-update", {
+    method: "POST",
+    body: JSON.stringify({ otp, newPassword })
+  }),
+  changePassword: ({ otp, newPassword }) => request("/auth/change-password/verify-and-update", {
+    method: "POST",
+    body: JSON.stringify({ otp, newPassword })
+  }),
   getMe: () => request("/auth/me"),
 
   // Profiles

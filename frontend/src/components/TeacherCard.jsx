@@ -171,29 +171,65 @@ export const TeacherCard = ({ teacher, ratings, onViewReviews, onWriteReview, on
               return <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>No courses registered yet</span>;
             }
             
-            // Group by courseCode+ltp and aggregate batches
+            // Group by unique courseCode and aggregate LTPs & batches
             const courseMap = {};
             raw.forEach(c => {
-              const key = `${c.courseCode}-${c.ltp || 'L'}`;
-              if (!courseMap[key]) {
-                courseMap[key] = { courseCode: c.courseCode, courseName: c.courseName, ltp: c.ltp, batches: new Set() };
+              const code = (c.courseCode || '').trim().toUpperCase();
+              if (!code) return;
+              if (!courseMap[code]) {
+                courseMap[code] = { courseCode: code, courseName: (c.courseName || '').trim(), ltpSet: new Set(), batches: new Set() };
               }
-              if (c.batchTaught) courseMap[key].batches.add(c.batchTaught);
+              if (c.courseName && (!courseMap[code].courseName || courseMap[code].courseName.length < c.courseName.trim().length)) {
+                courseMap[code].courseName = c.courseName.trim();
+              }
+              if (c.ltp) {
+                const l = c.ltp.trim().toUpperCase();
+                if (l === 'L') courseMap[code].ltpSet.add('Lecture');
+                else if (l === 'T') courseMap[code].ltpSet.add('Tutorial');
+                else if (l === 'P') courseMap[code].ltpSet.add('Lab');
+                else courseMap[code].ltpSet.add(c.ltp);
+              }
+              if (c.batchTaught && c.batchTaught.toUpperCase() !== 'ALL') {
+                c.batchTaught.split(',').forEach(b => {
+                  const tb = b.trim().toUpperCase();
+                  if (tb && tb !== 'ALL') courseMap[code].batches.add(tb);
+                });
+              }
             });
+
+            const formatLtps = (ltpSet) => {
+              const order = ['Lecture', 'Tutorial', 'Lab'];
+              const list = order.filter(x => ltpSet.has(x));
+              ltpSet.forEach(x => { if (!order.includes(x)) list.push(x); });
+              if (list.length === 0) return 'Lecture';
+              if (list.length === 1) return list[0];
+              if (list.length === 2) return `${list[0]} & ${list[1]}`;
+              return `${list.slice(0, -1).join(', ')} & ${list[list.length - 1]}`;
+            };
+
+            const formatBatches = (batches) => {
+              const arr = Array.from(batches);
+              if (arr.length === 0) return '';
+              if (arr.length <= 3) return arr.join(', ');
+              return `${arr.slice(0, 3).join(', ')} +${arr.length - 3}`;
+            };
             
-            const ltpLabel = { L: 'Lecture', T: 'Tutorial', P: 'Lab' };
             const grouped = Object.values(courseMap);
             
-            return grouped.map((c, i) => (
-              <span key={i} className="badge badge-neutral" style={{ fontSize: '11.5px', lineHeight: '1.4' }}>
-                {c.courseCode}{c.courseName ? ` - ${c.courseName}` : ''} · {ltpLabel[c.ltp] || c.ltp || 'Lecture'}
-                {c.batches.size > 0 && (
-                  <span style={{ opacity: 0.8, marginLeft: '4px' }}>
-                    ({Array.from(c.batches).join(', ')})
-                  </span>
-                )}
-              </span>
-            ));
+            return grouped.map((c, i) => {
+              const ltpStr = formatLtps(c.ltpSet);
+              const batchStr = formatBatches(c.batches);
+              return (
+                <span key={i} className="badge badge-neutral" style={{ fontSize: '11.5px', lineHeight: '1.4' }} title={c.courseName ? `${c.courseCode}: ${c.courseName}` : c.courseCode}>
+                  {c.courseCode}{c.courseName && c.courseName.toUpperCase() !== c.courseCode ? ` - ${c.courseName}` : ''} · {ltpStr}
+                  {batchStr && (
+                    <span style={{ opacity: 0.8, marginLeft: '4px' }}>
+                      ({batchStr})
+                    </span>
+                  )}
+                </span>
+              );
+            });
           })()}
         </div>
       </div>

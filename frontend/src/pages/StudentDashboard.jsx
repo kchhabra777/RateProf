@@ -42,6 +42,8 @@ import CommandMenu from '../components/ui/command-menu';
 import { ShareProfileModal } from '../components/ShareProfileModal';
 import { MobileNav } from '../components/MobileNav';
 import { PeerSupportFeed } from '../components/PeerSupportFeed';
+import { ChangePasswordModal } from '../components/ChangePasswordModal';
+import { KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 
 
@@ -49,6 +51,7 @@ export const StudentDashboard = () => {
   const { user, onboardStudent } = useAuth();
   const [tab, setTab] = useState('eligible'); // 'eligible' | 'all'
   const [mobileTab, setMobileTab] = useState('directory'); // 'directory' | 'feed' | 'leaderboard' | 'profile'
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const [eligibleTeachers, setEligibleTeachers] = useState([]);
   const [allTeachers, setAllTeachers] = useState([]);
   const [teacherRatingsMap, setTeacherRatingsMap] = useState({});
@@ -122,6 +125,14 @@ export const StudentDashboard = () => {
     }
   };
 
+  const userRank = React.useMemo(() => {
+    if (!leaderboard || leaderboard.length === 0) return null;
+    const studentProfileId = user?.studentProfile?.id;
+    const rollNo = user?.studentProfile?.rollNumber;
+    const index = leaderboard.findIndex(s => (studentProfileId && s.id === studentProfileId) || (rollNo && s.rollNumber === rollNo));
+    return index !== -1 ? index + 1 : null;
+  }, [leaderboard, user?.studentProfile?.id, user?.studentProfile?.rollNumber]);
+
   const fetchMyBatchRequests = async () => {
     try {
       const res = await api.getMyBatchRequests();
@@ -157,8 +168,11 @@ export const StudentDashboard = () => {
     }
   };
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
+  const fetchDashboardData = async (isInitial = false) => {
+    // Only show full loading spinner if we don't have teachers cached yet
+    if (isInitial && allTeachers.length === 0) {
+      setLoading(true);
+    }
     try {
       // 1. Fetch eligible teachers
       const eligibleRes = await api.getEligibleTeachers(studentBatch, studentBranch).catch(() => ({ teachers: [] }));
@@ -196,10 +210,10 @@ export const StudentDashboard = () => {
   };
 
   useEffect(() => {
-    fetchDashboardData();
+    fetchDashboardData(true);
     fetchMyBatchRequests();
     fetchLeaderboard();
-  }, [user, user?.studentProfile?.batch]);
+  }, [user?.id, studentBatch, studentBranch]);
 
   // Global Command+K / Ctrl+K shortcut for quick search & actions
   useEffect(() => {
@@ -213,9 +227,112 @@ export const StudentDashboard = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Handle Tab Switch with browser history push
+  const handleTabChange = (newTab) => {
+    if (newTab !== mobileTab) {
+      if (newTab !== 'directory') {
+        window.history.pushState({ appNavigation: true, view: 'tab', tab: newTab }, '');
+      }
+      setMobileTab(newTab);
+    }
+  };
+
+  // Back to directory that keeps browser history in sync
+  const handleBackToDirectory = () => {
+    if (window.history.state?.appNavigation) {
+      window.history.back();
+    } else {
+      setSelectedTeacher(null);
+    }
+  };
+
+  const openAIInsights = () => {
+    window.history.pushState({ appNavigation: true, view: 'ai_insights' }, '');
+    setIsAIInsightsOpen(true);
+  };
+
+  const openWriteReview = (teacher) => {
+    window.history.pushState({ appNavigation: true, view: 'write_review' }, '');
+    setReviewingTeacher(teacher);
+  };
+
+  const openSuggestTeacher = (teacher) => {
+    window.history.pushState({ appNavigation: true, view: 'suggest_teacher' }, '');
+    setSuggestTeacher(teacher);
+  };
+
+  const openShareTeacher = (teacher) => {
+    window.history.pushState({ appNavigation: true, view: 'share_teacher' }, '');
+    setSharingTeacher(teacher);
+  };
+
+  const openBatchChange = () => {
+    setNewBatchInput(studentBatch);
+    setNewBranchInput(studentBranch);
+    setBatchUpdateMsg('');
+    window.history.pushState({ appNavigation: true, view: 'change_batch' }, '');
+    setIsChangeBatchOpen(true);
+  };
+
+  // Browser Back Button & Swipe Back interceptor (prevents leaving the website)
+  useEffect(() => {
+    const handlePopState = () => {
+      // 1. Close open modals first
+      if (isAIInsightsOpen) {
+        setIsAIInsightsOpen(false);
+        return;
+      }
+      if (reviewingTeacher) {
+        setReviewingTeacher(null);
+        return;
+      }
+      if (suggestTeacher) {
+        setSuggestTeacher(null);
+        return;
+      }
+      if (sharingTeacher) {
+        setSharingTeacher(null);
+        return;
+      }
+      if (isChangeBatchOpen) {
+        setIsChangeBatchOpen(false);
+        return;
+      }
+      if (isCmdMenuOpen) {
+        setIsCmdMenuOpen(false);
+        return;
+      }
+
+      // 2. If viewing a teacher's reviews, return to directory
+      if (selectedTeacher) {
+        setSelectedTeacher(null);
+        return;
+      }
+
+      // 3. If in another tab, return to main directory
+      if (mobileTab !== 'directory') {
+        setMobileTab('directory');
+        return;
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [
+    isAIInsightsOpen,
+    reviewingTeacher,
+    suggestTeacher,
+    sharingTeacher,
+    isChangeBatchOpen,
+    isCmdMenuOpen,
+    selectedTeacher,
+    mobileTab
+  ]);
+
   const handleViewReviews = async (teacher, isSilentRefresh = false) => {
     setSelectedTeacher(teacher);
     if (!isSilentRefresh) {
+      window.history.pushState({ appNavigation: true, view: 'teacher', id: teacher.id || teacher.userId }, '');
       setReviewsLoading(true);
       setSelectedTeacherTags(null);
       setReviewsPage(1);
@@ -314,12 +431,7 @@ export const StudentDashboard = () => {
             <div style={{ fontSize: '14px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span>Batch <strong>{studentBatch}</strong> • Branch <strong>{studentBranch}</strong> • Year <strong>{user?.studentProfile?.yearOfStudy || 1}</strong></span>
               <button
-                onClick={() => {
-                  setNewBatchInput(studentBatch);
-                  setNewBranchInput(studentBranch);
-                  setBatchUpdateMsg('');
-                  setIsChangeBatchOpen(true);
-                }}
+                onClick={openBatchChange}
                 className="btn btn-secondary btn-sm"
                 style={{ padding: '2px 8px', fontSize: '11.5px', height: '24px' }}
                 title="Request a batch change if your tutorial/lab was reshuffled"
@@ -329,7 +441,32 @@ export const StudentDashboard = () => {
             </div>
           </div>
 
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* Top Helpers Rank Field */}
+              <button
+                type="button"
+                onClick={() => handleTabChange('leaderboard')}
+                className="badge"
+                style={{
+                  background: userRank ? (userRank <= 3 ? '#fefce8' : '#eff6ff') : '#f8fafc',
+                  color: userRank ? (userRank <= 3 ? '#854d0e' : '#1d4ed8') : '#475569',
+                  border: userRank ? (userRank <= 3 ? '1px solid #fef08a' : '1px solid #bfdbfe') : '1px solid #e2e8f0',
+                  padding: '8px 14px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: userRank && userRank <= 3 ? '0 2px 8px rgba(234, 179, 8, 0.2)' : 'none',
+                  transition: 'all 0.2s',
+                }}
+                title="Click to view Top Helpers Leaderboard"
+              >
+                <Trophy size={14} color={userRank ? (userRank <= 3 ? '#eab308' : '#3b82f6') : '#94a3b8'} />
+                {userRank ? `Rank #${userRank} Top Helper` : 'Top Helpers Leaderboard'}
+              </button>
+
               <span className="badge" style={{ background: '#fdf4ff', color: '#a21caf', border: '1px solid #fbcfe8', padding: '8px 14px', fontSize: '13px' }}>
                 <Sparkles size={14} style={{ marginRight: '6px' }} />
                 {user?.studentProfile?.xp || 0} XP
@@ -376,25 +513,25 @@ export const StudentDashboard = () => {
         paddingBottom: '12px'
       }}>
         <button 
-          onClick={() => setMobileTab('directory')}
+          onClick={() => handleTabChange('directory')}
           className={`btn ${mobileTab === 'directory' ? 'btn-primary' : 'btn-secondary'}`}
         >
           <Search size={16} /> Faculty
         </button>
         <button 
-          onClick={() => setMobileTab('feed')}
+          onClick={() => handleTabChange('feed')}
           className={`btn ${mobileTab === 'feed' ? 'btn-primary' : 'btn-secondary'}`}
         >
           <HeartHandshake size={16} /> Peer Support
         </button>
         <button 
-          onClick={() => setMobileTab('leaderboard')}
+          onClick={() => handleTabChange('leaderboard')}
           className={`btn ${mobileTab === 'leaderboard' ? 'btn-primary' : 'btn-secondary'}`}
         >
           <Award size={16} /> Top Helpers
         </button>
         <button 
-          onClick={() => setMobileTab('profile')}
+          onClick={() => handleTabChange('profile')}
           className={`btn ${mobileTab === 'profile' ? 'btn-primary' : 'btn-secondary'}`}
         >
           <User size={16} /> My Profile
@@ -465,17 +602,88 @@ export const StudentDashboard = () => {
           ))}
         </div>
       ) : mobileTab === 'profile' ? (
-        <div className="card" style={{ padding: '60px 20px', textAlign: 'center', marginTop: '24px' }}>
-          <User size={48} style={{ margin: '0 auto 16px', color: 'var(--text-secondary)', opacity: 0.8 }} />
-          <h2 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '8px' }}>Your Profile</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '15px' }}>
-            View your written reviews and update your batch details.
-          </p>
+        <div style={{ maxWidth: '600px', margin: '24px auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Identity Card */}
+          <div className="card" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '16px',
+              background: 'linear-gradient(135deg, #b91c1c, #991b1b)',
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 800,
+              fontSize: '22px',
+              flexShrink: 0
+            }}>
+              {(user?.studentProfile?.fullName || user?.fullName || 'S').charAt(0).toUpperCase()}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--text-primary)' }}>
+                {user?.studentProfile?.fullName || 'Student Profile'}
+              </h2>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', fontSize: '12px' }}>
+                <span className="badge badge-student">Roll: {studentRollNo || '—'}</span>
+                <span className="badge">{studentBranch}</span>
+                <span className="badge" style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}>Batch {studentBatch}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Academic Settings Card */}
+          <div className="card" style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 4px 0' }}>Academic Group</h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>
+                  Assigned curriculum and faculty directory batch
+                </p>
+              </div>
+              <button 
+                onClick={() => setIsChangeBatchOpen(true)}
+                className="btn btn-secondary btn-sm"
+              >
+                <Edit3 size={14} /> Change Batch
+              </button>
+            </div>
+            <div style={{ background: 'var(--bg-card-subtle)', padding: '12px 16px', borderRadius: '10px', fontSize: '13px', display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Current Sub-Section:</span>
+              <strong style={{ color: 'var(--text-primary)' }}>{studentBatch} ({studentBranch})</strong>
+            </div>
+          </div>
+
+          {/* Security & Password Card */}
+          <div className="card" style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 4px 0' }}>Account Security</h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>
+                  Manage your account password with email verification
+                </p>
+              </div>
+              <button 
+                onClick={() => setShowChangePassword(true)}
+                className="btn btn-primary btn-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <KeyRound size={14} /> Change Password
+              </button>
+            </div>
+            <div style={{ background: 'var(--bg-card-subtle)', padding: '12px 16px', borderRadius: '10px', fontSize: '13px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Registered Email:</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <strong style={{ color: 'var(--text-primary)' }}>{user?.email}</strong>
+                <span style={{ fontSize: '10px', fontWeight: 700, background: '#dcfce7', color: '#15803d', padding: '2px 6px', borderRadius: '99px' }}>Verified</span>
+              </div>
+            </div>
+          </div>
         </div>
       ) : selectedTeacher ? (
         <div>
           <button
-            onClick={() => setSelectedTeacher(null)}
+            onClick={handleBackToDirectory}
             className="btn btn-secondary btn-sm"
             style={{ marginBottom: '16px' }}
           >
@@ -525,35 +733,116 @@ export const StudentDashboard = () => {
                     </div>
                   )}
                   
-                  {/* Courses Tags — grouped by course and LTP, showing batches */}
+                  {/* Courses Tags — grouped by UNIQUE course taught by the teacher */}
                   {(() => {
-                    const coursesList = (selectedTeacher.courses?.length > 0 ? selectedTeacher.courses : selectedTeacher.offerings) || [];
-                    if (coursesList.length === 0) return null;
+                    const allTeacherData = allTeachers.find(t => 
+                      (t.id && (t.id === selectedTeacher.id || t.id === selectedTeacher.userId)) ||
+                      (t.userId && (t.userId === selectedTeacher.id || t.userId === selectedTeacher.userId))
+                    );
+                    const rawOfferings = [
+                      ...(allTeacherData?.offerings || []),
+                      ...(selectedTeacher.offerings || []),
+                      ...(selectedTeacher.courses || [])
+                    ];
+                    if (rawOfferings.length === 0) return null;
                     
                     const courseMap = {};
-                    coursesList.forEach(c => {
-                      const key = `${c.courseCode}-${c.ltp || 'L'}`;
-                      if (!courseMap[key]) {
-                        courseMap[key] = { courseCode: c.courseCode, ltp: c.ltp, batches: new Set() };
+                    rawOfferings.forEach(c => {
+                      const code = (c.courseCode || '').trim().toUpperCase();
+                      if (!code) return;
+                      if (!courseMap[code]) {
+                        courseMap[code] = {
+                          courseCode: code,
+                          courseName: (c.courseName || '').trim(),
+                          ltpSet: new Set(),
+                          batches: new Set()
+                        };
                       }
-                      if (c.batchTaught) courseMap[key].batches.add(c.batchTaught);
+                      if (c.courseName && (!courseMap[code].courseName || courseMap[code].courseName.length < c.courseName.trim().length)) {
+                        courseMap[code].courseName = c.courseName.trim();
+                      }
+                      if (c.ltp) {
+                        const ltp = c.ltp.trim().toUpperCase();
+                        if (ltp === 'L') courseMap[code].ltpSet.add('Lecture');
+                        else if (ltp === 'T') courseMap[code].ltpSet.add('Tutorial');
+                        else if (ltp === 'P') courseMap[code].ltpSet.add('Lab');
+                        else courseMap[code].ltpSet.add(c.ltp);
+                      }
+                      if (c.batchTaught && c.batchTaught.toUpperCase() !== 'ALL') {
+                        c.batchTaught.split(',').forEach(b => {
+                          const tb = b.trim().toUpperCase();
+                          if (tb && tb !== 'ALL') courseMap[code].batches.add(tb);
+                        });
+                      }
                     });
-                    
-                    const ltpLabel = { L: 'Lecture', T: 'Tutorial', P: 'Lab' };
-                    const grouped = Object.values(courseMap);
+
+                    const formatTitle = (str) => {
+                      if (!str) return '';
+                      const t = str.trim();
+                      if (/[a-z]/.test(t) && /[A-Z]/.test(t)) return t;
+                      return t.toLowerCase().split(' ').map(w => {
+                        if (['and', 'or', 'of', 'in', 'for', 'to', '&'].includes(w)) return w;
+                        if (['ii', 'iii', 'iv', 'v', 'vi'].includes(w)) return w.toUpperCase();
+                        return w.charAt(0).toUpperCase() + w.slice(1);
+                      }).join(' ');
+                    };
+
+                    const formatLtps = (ltpSet) => {
+                      const order = ['Lecture', 'Tutorial', 'Lab'];
+                      const list = order.filter(x => ltpSet.has(x));
+                      ltpSet.forEach(x => { if (!order.includes(x)) list.push(x); });
+                      if (list.length === 0) return 'Lecture';
+                      if (list.length === 1) return list[0];
+                      if (list.length === 2) return `${list[0]} & ${list[1]}`;
+                      return `${list.slice(0, -1).join(', ')} & ${list[list.length - 1]}`;
+                    };
+
+                    const formatBatches = (batches) => {
+                      const arr = Array.from(batches);
+                      if (arr.length === 0) return '';
+                      if (arr.length <= 3) return arr.join(', ');
+                      return `${arr.slice(0, 3).join(', ')} +${arr.length - 3}`;
+                    };
+
+                    const uniqueCourses = Object.values(courseMap);
+                    if (uniqueCourses.length === 0) return null;
                     
                     return (
                       <div style={{ marginTop: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                        {grouped.map((c, idx) => (
-                          <span key={idx} className="badge badge-neutral" style={{ fontSize: '11px', padding: '4px 8px', background: 'var(--bg-card-hover)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', lineHeight: '1.4' }}>
-                            {c.courseCode} · {ltpLabel[c.ltp] || c.ltp || 'Lecture'}
-                            {c.batches.size > 0 && (
-                              <span style={{ opacity: 0.8, marginLeft: '4px' }}>
-                                ({Array.from(c.batches).join(', ')})
-                              </span>
-                            )}
-                          </span>
-                        ))}
+                        {uniqueCourses.map((c, idx) => {
+                          const ltpStr = formatLtps(c.ltpSet);
+                          const batchStr = formatBatches(c.batches);
+                          const courseTitle = formatTitle(c.courseName);
+                          return (
+                            <span 
+                              key={idx} 
+                              className="badge badge-neutral" 
+                              style={{ 
+                                fontSize: '11px', 
+                                padding: '4px 9px', 
+                                background: 'var(--bg-card-hover)', 
+                                border: '1px solid var(--border-light)', 
+                                color: 'var(--text-primary)', 
+                                lineHeight: '1.4',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                              title={c.courseName ? `${c.courseCode}: ${c.courseName}` : c.courseCode}
+                            >
+                              <span style={{ fontWeight: 700 }}>{c.courseCode}</span>
+                              {courseTitle && courseTitle.toUpperCase() !== c.courseCode && (
+                                <span style={{ color: 'var(--text-secondary)' }}>· {courseTitle}</span>
+                              )}
+                              <span style={{ color: 'var(--text-muted)' }}>· {ltpStr}</span>
+                              {batchStr && (
+                                <span style={{ opacity: 0.8, color: 'var(--text-muted)' }}>
+                                  ({batchStr})
+                                </span>
+                              )}
+                            </span>
+                          );
+                        })}
                       </div>
                     );
                   })()}
@@ -594,7 +883,7 @@ export const StudentDashboard = () => {
                         } catch (e) {
                           // Handled by modal copy
                         }
-                        setSharingTeacher(selectedTeacher);
+                        openShareTeacher(selectedTeacher);
                       }}
                       className="btn btn-secondary"
                       title="Share profile to batch WhatsApp groups, Reddit, or copy link"
@@ -603,7 +892,7 @@ export const StudentDashboard = () => {
                       <span>Share Profile</span>
                     </button>
                     <button
-                      onClick={() => setSuggestTeacher(selectedTeacher)}
+                      onClick={() => openSuggestTeacher(selectedTeacher)}
                       className="btn btn-secondary"
                       title="Add missing courses or info to this faculty member"
                     >
@@ -612,7 +901,7 @@ export const StudentDashboard = () => {
                     </button>
                     {eligibleTeachers.some(t => (t.id || t.userId) === (selectedTeacher.id || selectedTeacher.userId)) ? (
                       <button
-                        onClick={() => setReviewingTeacher(selectedTeacher)}
+                        onClick={() => openWriteReview(selectedTeacher)}
                         className="btn btn-primary"
                       >
                         <MessageSquarePlus size={16} />
@@ -630,7 +919,7 @@ export const StudentDashboard = () => {
                       </button>
                     )}
                     <button 
-                      onClick={() => setIsAIInsightsOpen(true)}
+                      onClick={openAIInsights}
                       style={{ 
                         position: 'relative',
                         overflow: 'hidden',
@@ -745,8 +1034,20 @@ export const StudentDashboard = () => {
                           dataKey="name" 
                           axisLine={false} 
                           tickLine={false} 
-                          width={140}
-                          tick={{ fill: 'var(--text-primary)', fontSize: 11, fontWeight: 600 }}
+                          width={160}
+                          tick={({ x, y, payload }) => (
+                            <text
+                              x={x}
+                              y={y}
+                              dy={4}
+                              textAnchor="end"
+                              fill="var(--text-primary)"
+                              fontSize={11.5}
+                              fontWeight={600}
+                            >
+                              {payload.value}
+                            </text>
+                          )}
                         />
                         <Tooltip 
                           cursor={{ fill: 'var(--bg-card-subtle)' }} 
@@ -861,7 +1162,7 @@ export const StudentDashboard = () => {
               </p>
               {eligibleTeachers.some(t => (t.id || t.userId) === (selectedTeacher.id || selectedTeacher.userId)) ? (
                 <button
-                  onClick={() => setReviewingTeacher(selectedTeacher)}
+                  onClick={() => openWriteReview(selectedTeacher)}
                   className="btn btn-primary btn-sm"
                 >
                   Write First Review
@@ -970,7 +1271,7 @@ export const StudentDashboard = () => {
                     <button
                       key={t.id || t.userId}
                       type="button"
-                      onClick={() => setSuggestTeacher(t)}
+                      onClick={() => openSuggestTeacher(t)}
                       className="btn btn-sm"
                       style={{
                         background: 'var(--bg-card)',
@@ -1077,8 +1378,8 @@ export const StudentDashboard = () => {
                     teacher={teacher}
                     ratings={ratings}
                     onViewReviews={handleViewReviews}
-                    onWriteReview={(t) => setReviewingTeacher(t)}
-                    onSuggestName={(t) => setSuggestTeacher(t)}
+                    onWriteReview={(t) => openWriteReview(t)}
+                    onSuggestName={(t) => openSuggestTeacher(t)}
                     isCR={isStudentCR}
                     canReview={tab === 'eligible'}
                   />
@@ -1287,7 +1588,13 @@ export const StudentDashboard = () => {
         </div>
       )}
 
-      <MobileNav activeTab={mobileTab} setActiveTab={setMobileTab} />
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={showChangePassword}
+        onClose={() => setShowChangePassword(false)}
+      />
+
+      <MobileNav activeTab={mobileTab} setActiveTab={handleTabChange} />
     </div>
   );
 };

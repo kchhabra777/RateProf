@@ -20,6 +20,15 @@
   }
 }
 
+@keyframes borderBeamSpin {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
 /* Custom animations for the orbital timeline */
 .animate-pulse { /* removed */
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;

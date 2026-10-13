@@ -18,6 +18,33 @@ import {
 } from 'lucide-react';
 
 /* ── tiny helpers ── */
+const formatJoinedDate = (dateStr) => {
+  if (!dateStr) return '—';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return '—';
+
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const isStudentRecent = (dateStr) => {
+  if (!dateStr) return false;
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return false;
+  const diffDays = (new Date() - date) / (1000 * 60 * 60 * 24);
+  return diffDays <= 7;
+};
+
 const getRatingColor = (r) => {
   if (r === 0) return '#71717a';
   if (r < 2.5) return '#ef4444';
@@ -89,6 +116,7 @@ export const AdminDashboard = () => {
   // Data
   const [teachers, setTeachers] = useState([]);
   const [students, setStudents] = useState([]);
+  const [studentSortFilter, setStudentSortFilter] = useState('newest'); // 'newest' | 'recent_7d' | 'all' | 'cr_only'
   const [ratingsMap, setRatingsMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -622,12 +650,31 @@ export const AdminDashboard = () => {
     facultyPage * FACULTY_PER_PAGE
   );
 
-  const filteredStudents = students.filter(s =>
-    !searchQuery ||
-    s.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.studentProfile?.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.studentProfile?.rollNumber?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredStudents = students
+    .filter(s => {
+      const matchesSearch =
+        !searchQuery ||
+        s.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.studentProfile?.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.studentProfile?.rollNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.studentProfile?.batch?.toLowerCase().includes(searchQuery.toLowerCase());
+      if (!matchesSearch) return false;
+
+      if (studentSortFilter === 'cr_only') return Boolean(s.studentProfile?.isCR);
+      if (studentSortFilter === 'recent_7d') {
+        const createdAt = s.createdAt || s.studentProfile?.createdAt;
+        return isStudentRecent(createdAt);
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (studentSortFilter === 'newest' || studentSortFilter === 'recent_7d') {
+        const dateA = new Date(a.createdAt || a.studentProfile?.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || b.studentProfile?.createdAt || 0).getTime();
+        return dateB - dateA; // Newest users first
+      }
+      return (a.studentProfile?.fullName || a.email || '').localeCompare(b.studentProfile?.fullName || b.email || '');
+    });
 
   const atRisk = teachers.filter(t => {
     const id = t.userId || t.user?.id || t.id;
@@ -1455,11 +1502,98 @@ export const AdminDashboard = () => {
         {/* ── Students Tab ── */}
         {activeTab === 'students' && (
           <div className="fade-in">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <div style={{ position: 'relative' }}>
-                <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input className="form-input" style={{ paddingLeft: '36px', width: '300px', height: '40px' }} placeholder="Search name, roll no, or email…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ position: 'relative' }}>
+                  <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input className="form-input" style={{ paddingLeft: '36px', width: '260px', height: '40px' }} placeholder="Search name, roll no, or email…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                </div>
+
+                {/* Filter Pills */}
+                <div style={{ display: 'inline-flex', background: 'var(--bg-card-subtle)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-light)', gap: '4px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setStudentSortFilter('newest')}
+                    className="btn btn-sm"
+                    style={{
+                      background: studentSortFilter === 'newest' ? 'var(--primary)' : 'transparent',
+                      color: studentSortFilter === 'newest' ? '#fff' : 'var(--text-muted)',
+                      border: 'none',
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      fontSize: '12px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <Sparkles size={13} />
+                    <span>Newest Users</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStudentSortFilter('recent_7d')}
+                    className="btn btn-sm"
+                    style={{
+                      background: studentSortFilter === 'recent_7d' ? 'var(--primary)' : 'transparent',
+                      color: studentSortFilter === 'recent_7d' ? '#fff' : 'var(--text-muted)',
+                      border: 'none',
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      fontSize: '12px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <Calendar size={13} />
+                    <span>Joined Last 7d</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStudentSortFilter('all')}
+                    className="btn btn-sm"
+                    style={{
+                      background: studentSortFilter === 'all' ? 'var(--primary)' : 'transparent',
+                      color: studentSortFilter === 'all' ? '#fff' : 'var(--text-muted)',
+                      border: 'none',
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    All Users
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStudentSortFilter('cr_only')}
+                    className="btn btn-sm"
+                    style={{
+                      background: studentSortFilter === 'cr_only' ? 'var(--primary)' : 'transparent',
+                      color: studentSortFilter === 'cr_only' ? '#fff' : 'var(--text-muted)',
+                      border: 'none',
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    👑 CRs
+                  </button>
+                </div>
               </div>
+
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <button
                   type="button"
@@ -1471,14 +1605,15 @@ export const AdminDashboard = () => {
                   <RefreshCw size={14} style={{ animation: studentsLoading ? 'spin 1s linear infinite' : 'none' }} />
                   <span>{studentsLoading ? 'Loading…' : 'Refresh'}</span>
                 </button>
-                <div className="badge" style={{ fontSize: '14px' }}><Users size={16}/> {students.length} Students</div>
+                <div className="badge" style={{ fontSize: '13px' }}><Users size={15}/> {filteredStudents.length} Students</div>
               </div>
             </div>
 
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr auto', padding: '12px 20px', background: 'var(--bg-card-subtle)', borderBottom: '1px solid var(--border-light)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr 0.9fr auto', padding: '12px 20px', background: 'var(--bg-card-subtle)', borderBottom: '1px solid var(--border-light)', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', gap: '16px' }}>
                 <span>Student</span>
                 <span>Roll Number</span>
+                <span>Joined</span>
                 <span>Batch CR Role</span>
                 <span>Status</span>
                 <span>Actions</span>
@@ -1490,13 +1625,41 @@ export const AdminDashboard = () => {
               ) : (
                 filteredStudents.map((student, idx) => {
                   const isCR = !!student.studentProfile?.isCR;
+                  const createdAt = student.createdAt || student.studentProfile?.createdAt;
+                  const isRecent = isStudentRecent(createdAt);
                   return (
-                    <div key={student.id} style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr auto', padding: '16px 20px', borderBottom: idx < filteredStudents.length - 1 ? '1px solid var(--border-light)' : 'none', alignItems: 'center', gap: '16px', background: student.isBanned ? 'rgba(239,68,68,0.05)' : 'transparent' }}>
+                    <div key={student.id} style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr 0.9fr auto', padding: '16px 20px', borderBottom: idx < filteredStudents.length - 1 ? '1px solid var(--border-light)' : 'none', alignItems: 'center', gap: '16px', background: student.isBanned ? 'rgba(239,68,68,0.05)' : 'transparent' }}>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: '15px' }}>{student.studentProfile?.fullName || 'Incomplete Profile'}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 700, fontSize: '15px' }}>{student.studentProfile?.fullName || 'Incomplete Profile'}</span>
+                          {isRecent && (
+                            <span style={{
+                              background: 'rgba(16, 185, 129, 0.15)',
+                              color: '#10b981',
+                              border: '1px solid rgba(16, 185, 129, 0.3)',
+                              borderRadius: '6px',
+                              fontSize: '10px',
+                              padding: '1px 6px',
+                              fontWeight: 800,
+                              letterSpacing: '0.04em'
+                            }}>
+                              NEW
+                            </span>
+                          )}
+                        </div>
                         <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{student.email}</div>
                       </div>
                       <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>{student.studentProfile?.rollNumber || '—'}</div>
+                      <div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: isRecent ? '#10b981' : 'var(--text-primary)' }}>
+                          {formatJoinedDate(createdAt)}
+                        </div>
+                        {createdAt && (
+                          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                            {new Date(createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </div>
+                        )}
+                      </div>
                       <div>
                         <button
                           type="button"

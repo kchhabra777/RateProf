@@ -1,10 +1,10 @@
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useCallback } from "react";
 import { cn } from "../../lib/utils";
 
 export function TiltCard({
-  tiltLimit = 10,
-  scale = 1.03,
-  perspective = 1200,
+  tiltLimit = 8,
+  scale = 1.02,
+  perspective = 1000,
   effect = "evade",
   spotlight = true,
   className,
@@ -13,42 +13,59 @@ export function TiltCard({
   ...props
 }) {
   const cardRef = useRef(null);
-  const [transform, setTransform] = useState(
-    `perspective(${perspective}px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`
-  );
-  const [spotlightPos, setSpotlightPos] = useState({ x: 50, y: 50 });
-  const [isHovered, setIsHovered] = useState(false);
+  const spotlightRef = useRef(null);
+  const rafId = useRef(null);
 
   const dir = effect === "evade" ? -1 : 1;
 
   const handlePointerMove = useCallback(
     (e) => {
+      // Skip tilt on touch devices for silky scroll performance
+      if (e.pointerType === 'touch') return;
+
       const el = cardRef.current;
       if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const px = (e.clientX - rect.left) / rect.width;
-      const py = (e.clientY - rect.top) / rect.height;
-      const xRot = (py - 0.5) * (tiltLimit * 2) * dir;
-      const yRot = (px - 0.5) * -(tiltLimit * 2) * dir;
-      setTransform(
-        `perspective(${perspective}px) rotateX(${xRot}deg) rotateY(${yRot}deg) scale3d(${scale}, ${scale}, ${scale})`
-      );
-      if (spotlight) {
-        setSpotlightPos({ x: px * 100, y: py * 100 });
-      }
+
+      if (rafId.current) cancelAnimationFrame(rafId.current);
+
+      rafId.current = requestAnimationFrame(() => {
+        const rect = el.getBoundingClientRect();
+        const px = (e.clientX - rect.left) / rect.width;
+        const py = (e.clientY - rect.top) / rect.height;
+        const xRot = (py - 0.5) * (tiltLimit * 2) * dir;
+        const yRot = (px - 0.5) * -(tiltLimit * 2) * dir;
+
+        el.style.transform = `perspective(${perspective}px) rotateX(${xRot.toFixed(2)}deg) rotateY(${yRot.toFixed(2)}deg) scale3d(${scale}, ${scale}, ${scale})`;
+        
+        if (spotlight && spotlightRef.current) {
+          spotlightRef.current.style.opacity = '1';
+          spotlightRef.current.style.left = `${(px * 100).toFixed(1)}%`;
+          spotlightRef.current.style.top = `${(py * 100).toFixed(1)}%`;
+        }
+      });
     },
     [tiltLimit, scale, perspective, dir, spotlight]
   );
 
   const handlePointerEnter = useCallback(() => {
-    setIsHovered(true);
+    const el = cardRef.current;
+    if (el) {
+      el.style.transition = "transform 0.15s ease-out";
+      el.style.zIndex = "10";
+    }
   }, []);
 
   const handlePointerLeave = useCallback(() => {
-    setTransform(
-      `perspective(${perspective}px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`
-    );
-    setIsHovered(false);
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+    const el = cardRef.current;
+    if (el) {
+      el.style.transition = "transform 0.4s ease-out";
+      el.style.transform = `perspective(${perspective}px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+      el.style.zIndex = "1";
+    }
+    if (spotlightRef.current) {
+      spotlightRef.current.style.opacity = '0';
+    }
   }, [perspective]);
 
   return (
@@ -57,12 +74,11 @@ export function TiltCard({
       onPointerEnter={handlePointerEnter}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
-      className={cn("will-change-transform relative overflow-hidden", className)}
+      className={cn("relative overflow-hidden", className)}
       style={{
-        transform,
-        transition: isHovered ? "transform 0.1s ease-out" : "transform 0.3s ease-out",
+        transform: `perspective(${perspective}px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`,
         transformStyle: "preserve-3d",
-        zIndex: isHovered ? 20 : 1,
+        transition: "transform 0.3s ease-out",
         ...style,
       }}
       {...props}
@@ -71,16 +87,17 @@ export function TiltCard({
       {spotlight && (
         <div
           className="pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-[inherit]"
-          style={{ opacity: isHovered ? 1 : 0, transition: "opacity 0.3s" }}
         >
           <div
-            className="absolute w-[200%] h-[200%] rounded-full opacity-100 dark:opacity-50"
+            ref={spotlightRef}
+            className="absolute w-[200%] h-[200%] rounded-full opacity-0 dark:opacity-0 pointer-events-none"
             style={{
-              left: `${spotlightPos.x}%`,
-              top: `${spotlightPos.y}%`,
+              left: "50%",
+              top: "50%",
               transform: "translate(-50%, -50%)",
+              transition: "opacity 0.25s ease",
               background:
-                "radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 40%)",
+                "radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 45%)",
             }}
           />
         </div>

@@ -176,21 +176,45 @@ export function PublicTeacherProfile({ teacherId, onBack, onLoginClick }) {
               Thapar Institute of Engineering and Technology (TIET)
             </div>
 
-            {/* Course tags — deduped, no raw batch string */}
+            {/* Course tags — unique courses taught by teacher */}
             {teacher.offerings && teacher.offerings.length > 0 && (() => {
-              const seen = new Set();
-              const ltpLabel = { L: 'Lecture', T: 'Tutorial', P: 'Lab' };
+              const courseMap = {};
+              teacher.offerings.forEach(off => {
+                const code = (off.courseCode || '').trim().toUpperCase();
+                if (!code) return;
+                if (!courseMap[code]) {
+                  courseMap[code] = { courseCode: code, courseName: (off.courseName || '').trim(), ltpSet: new Set() };
+                }
+                if (off.courseName && (!courseMap[code].courseName || courseMap[code].courseName.length < off.courseName.trim().length)) {
+                  courseMap[code].courseName = off.courseName.trim();
+                }
+                if (off.ltp) {
+                  const l = off.ltp.trim().toUpperCase();
+                  if (l === 'L') courseMap[code].ltpSet.add('Lecture');
+                  else if (l === 'T') courseMap[code].ltpSet.add('Tutorial');
+                  else if (l === 'P') courseMap[code].ltpSet.add('Lab');
+                  else courseMap[code].ltpSet.add(off.ltp);
+                }
+              });
+
+              const formatLtps = (ltpSet) => {
+                const order = ['Lecture', 'Tutorial', 'Lab'];
+                const list = order.filter(x => ltpSet.has(x));
+                ltpSet.forEach(x => { if (!order.includes(x)) list.push(x); });
+                if (list.length === 0) return 'Lecture';
+                if (list.length === 1) return list[0];
+                if (list.length === 2) return `${list[0]} & ${list[1]}`;
+                return `${list.slice(0, -1).join(', ')} & ${list[list.length - 1]}`;
+              };
+
+              const uniqueList = Object.values(courseMap);
+
               return (
                 <div style={{ marginTop: '14px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {teacher.offerings.filter(off => {
-                    const key = `${off.courseCode}-${off.ltp || 'L'}`;
-                    if (seen.has(key)) return false;
-                    seen.add(key);
-                    return true;
-                  }).map((off, idx) => (
-                    <span key={idx} className="badge badge-neutral" style={{ fontSize: '12px', padding: '4px 10px' }}>
+                  {uniqueList.map((off, idx) => (
+                    <span key={idx} className="badge badge-neutral" style={{ fontSize: '12px', padding: '4px 10px' }} title={off.courseName ? `${off.courseCode}: ${off.courseName}` : off.courseCode}>
                       <BookOpen size={12} style={{ marginRight: '4px' }} />
-                      {off.courseCode}{off.courseName ? ` - ${off.courseName}` : ''} · {ltpLabel[off.ltp] || off.ltp || 'Lecture'}
+                      {off.courseCode}{off.courseName && off.courseName.toUpperCase() !== off.courseCode ? ` - ${off.courseName}` : ''} · {formatLtps(off.ltpSet)}
                     </span>
                   ))}
                 </div>

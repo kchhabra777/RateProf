@@ -25,7 +25,7 @@ const initTransporter = () => {
   return transporter;
 };
 
-export const sendOtp = async (email) => {
+export const sendOtp = async (email, purpose = "verification") => {
   const normalizedEmail = email.trim().toLowerCase();
   
   // Generate 6-digit OTP
@@ -47,7 +47,7 @@ export const sendOtp = async (email) => {
   });
 
   console.log(`\n========================================`);
-  console.log(`✉️  [CAMPUS FEEDBACK OTP]`);
+  console.log(`✉️  [CAMPUS FEEDBACK OTP] (${purpose.toUpperCase()})`);
   console.log(`To: ${normalizedEmail}`);
   console.log(`Code: ${otp}`);
   console.log(`Valid until: ${expiresAt.toISOString()}`);
@@ -55,21 +55,39 @@ export const sendOtp = async (email) => {
 
   const mailClient = initTransporter();
   if (mailClient) {
+    let subject = "Your Campus Feedback Verification Code";
+    let heading = "Verification Code";
+    let message = "Your 6-digit verification code to complete your registration is:";
+
+    if (purpose === "password_reset") {
+      subject = "Password Reset Code - RateProf";
+      heading = "Password Reset Request";
+      message = "Your 6-digit verification code to reset your account password is:";
+    } else if (purpose === "change_password") {
+      subject = "Security Verification Code - RateProf";
+      heading = "Change Password Security Verification";
+      message = "Your 6-digit verification code to change your account password is:";
+    }
+
     try {
       await mailClient.sendMail({
         from: process.env.SMTP_FROM || "Thapar Feedback System <noreply@thapar.edu>",
         to: normalizedEmail,
-        subject: "Your Campus Feedback Verification Code",
+        subject,
         html: `
-          <div style="font-family: Arial, sans-serif; padding: 20px; color: #1a1a1a;">
-            <h2 style="color: #c93b2b;">Thapar Campus Feedback System</h2>
-            <p>Hello,</p>
-            <p>Your 6-digit verification code to complete your registration is:</p>
-            <div style="font-size: 28px; font-weight: bold; letter-spacing: 4px; color: #111; padding: 12px 0;">
+          <div style="font-family: Arial, sans-serif; padding: 24px; color: #1a1a1a; max-width: 520px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px;">
+            <div style="border-bottom: 2px solid #b91c1c; padding-bottom: 12px; margin-bottom: 20px;">
+              <h2 style="color: #b91c1c; margin: 0; font-size: 20px;">RateProf • TIET Campus Feedback</h2>
+            </div>
+            <h3 style="color: #1e293b; margin-top: 0;">${heading}</h3>
+            <p style="font-size: 14px; color: #475569; line-height: 1.5;">${message}</p>
+            <div style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #b91c1c; background: #fef2f2; border: 1px dashed #fca5a5; border-radius: 8px; padding: 16px; text-align: center; margin: 20px 0;">
               ${otp}
             </div>
-            <p>This code will expire in 10 minutes.</p>
-            <p style="color: #666; font-size: 12px;">If you did not request this code, please ignore this email.</p>
+            <p style="font-size: 13px; color: #64748b; margin-bottom: 4px;">⏰ This code will expire in <strong>10 minutes</strong>.</p>
+            <p style="font-size: 12px; color: #94a3b8; margin-top: 16px; border-top: 1px solid #f1f5f9; padding-top: 12px;">
+              If you did not request this verification code, please ignore this email or contact support immediately.
+            </p>
           </div>
         `
       });

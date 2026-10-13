@@ -4,10 +4,55 @@ import {
   loginUser,
   getUserById
 } from "../services/authService.js";
-import { sendOtp as sendOtpService } from "../services/emailOtpService.js";
+import { sendOtp as sendOtpService, verifyOtp } from "../services/emailOtpService.js";
 import { determineRoleFromEmail } from "../utils/roleDetector.js";
 import prisma from "../lib/prisma.js";
 import { generateToken } from "../utils/jwt.js";
+import bcrypt from "bcryptjs";
+
+const syncPasswordToClerkIfApplicable = async (user, newPassword) => {
+  const secretKey = process.env.CLERK_SECRET_KEY;
+  if (!secretKey) return;
+
+  let clerkUserId = null;
+  if (user.passwordHash && user.passwordHash.startsWith("CLERK_user_")) {
+    clerkUserId = user.passwordHash.replace("CLERK_", "");
+  }
+
+  try {
+    if (!clerkUserId) {
+      const lookupRes = await fetch(`https://api.clerk.com/v1/users?email_address=${encodeURIComponent(user.email)}`, {
+        headers: { Authorization: `Bearer ${secretKey}` }
+      });
+      if (lookupRes.ok) {
+        const users = await lookupRes.json();
+        if (users && users.length > 0) {
+          clerkUserId = users[0].id;
+        }
+      }
+    }
+
+    if (clerkUserId) {
+      console.log(`[AUTH] Syncing updated password to Clerk user ${clerkUserId}`);
+      const patchRes = await fetch(`https://api.clerk.com/v1/users/${clerkUserId}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${secretKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ password: newPassword })
+      });
+      if (!patchRes.ok) {
+        const errText = await patchRes.text();
+        console.warn(`[AUTH] Clerk password sync response for ${clerkUserId}:`, errText);
+      } else {
+        console.log(`[AUTH] Successfully synced password to Clerk for ${clerkUserId}`);
+      }
+    }
+  } catch (err) {
+    console.warn(`[AUTH] Error syncing password to Clerk:`, err.message);
+  }
+};
 
 export const checkEmail = async (req, res) => {
   try {
@@ -140,5 +185,153 @@ export const syncClerkUser = async (req, res) => {
     return res.status(200).json({ user, token });
   } catch (error) {
     return res.status(500).json({ error: error.message });
+  }
+};
+
+export const forgotPasswordSendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: "Email address is required." });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail.endsWith("@thapar.edu")) {
+      return res.status(400).json({ error: "Only official @thapar.edu email addresses are permitted." });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "No account found with this Thapar email address. Please sign up first." });
+    }
+
+    if (user.isBanned) {
+      return res.status(403).json({ error: "Your account has been suspended by an administrator." });
+    }
+
+    await sendOtpService(normalizedEmail, "password_reset");
+
+    return res.status(200).json({
+      success: true,
+      message: `Password reset verification code sent to ${normalizedEmail}`
+    });
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+};
+
+export const forgotPasswordReset = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ error: "Email, 6-digit verification code, and new password are required." });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: "Password must be at least 8 characters long." });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User account not found." });
+    }
+
+    if (user.isBanned) {
+      return res.status(403).json({ error: "Your account has been suspended by an administrator." });
+    }
+
+    const isOtpValid = await verifyOtp(normalizedEmail, otp);
+    if (!isOtpValid) {
+      return res.status(400).json({ error: "Invalid or expired verification code." });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        isEmailVerified: true
+      }
+    });
+
+    // Also sync to Clerk if user account exists in Clerk
+    await syncPasswordToClerkIfApplicable(user, newPassword);
+
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successfully. You can now log in with your new password."
+    });
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+};
+
+export const changePasswordSendOtp = async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user || !user.email) {
+      return res.status(401).json({ error: "Authentication required." });
+    }
+
+    await sendOtpService(user.email, "change_password");
+
+    return res.status(200).json({
+      success: true,
+      message: `Verification code sent to your registered email (${user.email})`
+    });
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+};
+
+export const changePasswordVerifyAndUpdate = async (req, res) => {
+  try {
+    const user = req.user;
+    const { otp, newPassword } = req.body;
+
+    if (!user || !user.email) {
+      return res.status(401).json({ error: "Authentication required." });
+    }
+
+    if (!otp || !newPassword) {
+      return res.status(400).json({ error: "Verification code and new password are required." });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: "Password must be at least 8 characters long." });
+    }
+
+    const isOtpValid = await verifyOtp(user.email, otp);
+    if (!isOtpValid) {
+      return res.status(400).json({ error: "Invalid or expired verification code." });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash }
+    });
+
+    // Also sync to Clerk if applicable
+    await syncPasswordToClerkIfApplicable(user, newPassword);
+
+    return res.status(200).json({
+      success: true,
+      message: "Password changed successfully."
+    });
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
   }
 };

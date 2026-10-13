@@ -27,16 +27,6 @@ export const BorderBeam = ({
         ...style
       }}
     >
-      <style>{`
-        @keyframes borderBeamSpin {
-          from {
-            transform: translate(-50%, -50%) rotate(0deg);
-          }
-          to {
-            transform: translate(-50%, -50%) rotate(360deg);
-          }
-        }
-      `}</style>
       <div
         style={{
           position: "absolute",

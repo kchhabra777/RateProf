@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { SignIn, useUser } from '@clerk/clerk-react';
-import { AlertCircle, ShieldCheck } from 'lucide-react';
+import { AlertCircle, ShieldCheck, Mail } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import BrandShowcase from '../components/ui/auth/BrandShowcase';
 import SignupForm from '../components/ui/auth/SignupForm';
+import ForgotPasswordForm from '../components/ui/auth/ForgotPasswordForm';
 
 export const AuthPage = () => {
-  const [isSignup, setIsSignup] = useState(false);
+  const [authMode, setAuthMode] = useState('login'); // 'login' | 'signup' | 'forgot-password'
   const { isSignedIn } = useUser();
   const { authError } = useAuth();
 
@@ -125,9 +126,12 @@ export const AuthPage = () => {
 
         {/* ===== RIGHT PANEL: Auth Form ===== */}
         <div className="auth-right-panel">
-          {isSignup ? (
+          {authMode === 'signup' ? (
             /* ----- SIGNUP MODE: Custom Form ----- */
-            <SignupForm onSwitchToLogin={() => setIsSignup(false)} />
+            <SignupForm onSwitchToLogin={() => setAuthMode('login')} />
+          ) : authMode === 'forgot-password' ? (
+            /* ----- FORGOT PASSWORD MODE: Custom Form ----- */
+            <ForgotPasswordForm onSwitchToLogin={() => setAuthMode('login')} />
           ) : (
             /* ----- LOGIN MODE: Clerk SignIn Widget ----- */
             <div className="auth-login-wrapper">
@@ -185,6 +189,40 @@ export const AuthPage = () => {
                   </div>
                 )}
 
+                {/* Institutional Access Notice */}
+                <div style={{
+                  marginBottom: '14px',
+                  padding: '10px 14px',
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  textAlign: 'left',
+                  boxShadow: '0 2px 8px rgba(185, 28, 28, 0.04)',
+                }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background: '#fee2e2',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    color: '#b91c1c',
+                  }}>
+                    <Mail size={16} />
+                  </div>
+                  <div style={{ fontSize: '12px', lineHeight: 1.45, color: '#374151' }}>
+                    <div style={{ fontWeight: 700, color: '#991b1b', marginBottom: '1px' }}>
+                      TIET Institutional Access Only
+                    </div>
+                    Sign in with your official <strong style={{ color: '#b91c1c' }}>@thapar.edu</strong> email address (via Google or Email).
+                  </div>
+                </div>
+
                 {/* Clerk SignIn Widget */}
                 <SignIn
                   routing="hash"
@@ -210,23 +248,26 @@ export const AuthPage = () => {
                   }}
                 />
 
-                {/* Switch to Sign Up */}
+                {/* Action Links: Forgot Password & Sign Up */}
                 <div style={{
-                  textAlign: 'center',
-                  marginTop: '12px',
-                  fontSize: '12.5px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginTop: '14px',
+                  padding: '0 2px',
+                  fontSize: '12px',
                   color: '#6b7280',
                 }}>
-                  New to the portal?{' '}
                   <button
-                    onClick={() => setIsSignup(true)}
+                    type="button"
+                    onClick={() => setAuthMode('forgot-password')}
                     style={{
                       background: 'none',
                       border: 'none',
                       color: '#b91c1c',
                       fontWeight: 700,
                       cursor: 'pointer',
-                      fontSize: '12.5px',
+                      fontSize: '12px',
                       fontFamily: '"Plus Jakarta Sans", sans-serif',
                       padding: 0,
                       textDecoration: 'none',
@@ -234,8 +275,31 @@ export const AuthPage = () => {
                     onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
                     onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
                   >
-                    Sign Up
+                    Forgot Password?
                   </button>
+
+                  <div>
+                    New to portal?{' '}
+                    <button
+                      type="button"
+                      onClick={() => setAuthMode('signup')}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#b91c1c',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontFamily: '"Plus Jakarta Sans", sans-serif',
+                        padding: 0,
+                        textDecoration: 'none',
+                      }}
+                      onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
+                      onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+                    >
+                      Sign Up
+                    </button>
+                  </div>
                 </div>
 
                 {/* Security Note */}

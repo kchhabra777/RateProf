@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../hooks/useTheme';
-import { LogOut, User, Award, Sun, Moon } from 'lucide-react';
+import { LogOut, User, Award, Sun, Moon, KeyRound } from 'lucide-react';
+import { ChangePasswordModal } from './ChangePasswordModal';
 
 export const Navbar = ({ currentView, setCurrentView }) => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   return (
     <header className="navbar" style={{ transition: 'background-color 0.2s ease, border-color 0.2s ease' }}>
@@ -57,6 +59,17 @@ export const Navbar = ({ currentView, setCurrentView }) => {
                 )}
               </div>
 
+              {/* Change Password Button */}
+              <button
+                onClick={() => setShowChangePassword(true)}
+                className="btn btn-subtle btn-sm"
+                title="Change Account Password"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <KeyRound size={14} />
+                <span className="hidden sm:inline">Change Password</span>
+              </button>
+
               <button onClick={logout} className="btn btn-subtle btn-sm" title="Log out">
                 <LogOut size={15} />
                 <span>Logout</span>
@@ -65,6 +78,12 @@ export const Navbar = ({ currentView, setCurrentView }) => {
           )}
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={showChangePassword}
+        onClose={() => setShowChangePassword(false)}
+      />
     </header>
   );
 };
