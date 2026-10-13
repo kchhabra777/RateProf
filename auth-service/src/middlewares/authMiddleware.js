@@ -9,10 +9,14 @@ export const requireAuth = async (req, res, next) => {
     console.log(`[AUTH] ── requireAuth for ${route}`);
 
     // 1. Check if Gateway injected verified Clerk User headers
-    const injectedUserId = req.headers["x-user-id"];
-    const injectedEmail = req.headers["x-user-email"];
+    const GATEWAY_INTERNAL_SECRET = process.env.GATEWAY_INTERNAL_SECRET || "rateprof_internal_gw_sec_2026_ti_campus";
+    const gatewaySecret = req.headers["x-gateway-secret"];
+    const isGatewayVerified = gatewaySecret && gatewaySecret === GATEWAY_INTERNAL_SECRET;
 
-    console.log(`[AUTH]   Strategy 1 – Gateway headers: userId=${injectedUserId || '(none)'}, email=${injectedEmail || '(none)'}`);
+    const injectedUserId = isGatewayVerified ? req.headers["x-user-id"] : undefined;
+    const injectedEmail = isGatewayVerified ? req.headers["x-user-email"] : undefined;
+
+    console.log(`[AUTH]   Strategy 1 – Gateway verified: ${isGatewayVerified}, userId=${injectedUserId || '(none)'}, email=${injectedEmail || '(none)'}`);
 
     if (injectedEmail || injectedUserId) {
       let user = await prisma.user.findFirst({
@@ -119,7 +123,7 @@ export const requireAuth = async (req, res, next) => {
       // Or we can just check if it has a 'sub' claim starting with 'user_', which campus tokens don't.
       const isClerkToken = rawDecoded && typeof rawDecoded.sub === 'string' && rawDecoded.sub.startsWith('user_');
 
-      if (isClerkToken && (rawDecoded.sub || rawDecoded.email || rawDecoded.email_address)) {
+      if (isGatewayVerified && isClerkToken && (rawDecoded.sub || rawDecoded.email || rawDecoded.email_address)) {
         const clerkSub = rawDecoded.sub;
         const clerkEmail = rawDecoded.email || rawDecoded.email_address || rawDecoded.claims?.email;
 

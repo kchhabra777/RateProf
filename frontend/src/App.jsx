@@ -1,18 +1,19 @@
 import CloudLoader from './components/ui/quantum-cloud-loader';
 import { Marquee } from './components/ui/marquee';
 import { TAG_THEMES } from './lib/tagTheme';
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { useAuth } from './context/AuthContext';
 import { AuthPage } from './pages/AuthPage';
-import { StudentOnboarding } from './pages/StudentOnboarding';
-import { TeacherOnboarding } from './pages/TeacherOnboarding';
-import { StudentDashboard } from './pages/StudentDashboard';
-import { TeacherDashboard } from './pages/TeacherDashboard';
-import { AdminDashboard } from './pages/AdminDashboard';
 import { Navbar } from './components/Navbar';
-import { Roadmap } from './pages/Roadmap';
-import { PublicTeacherProfile } from './pages/PublicTeacherProfile';
 import { AccountSuspended } from './components/AccountSuspended';
+
+const StudentOnboarding = lazy(() => import('./pages/StudentOnboarding').then(m => ({ default: m.StudentOnboarding })));
+const TeacherOnboarding = lazy(() => import('./pages/TeacherOnboarding').then(m => ({ default: m.TeacherOnboarding })));
+const StudentDashboard = lazy(() => import('./pages/StudentDashboard').then(m => ({ default: m.StudentDashboard })));
+const TeacherDashboard = lazy(() => import('./pages/TeacherDashboard').then(m => ({ default: m.TeacherDashboard })));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const Roadmap = lazy(() => import('./pages/Roadmap').then(m => ({ default: m.Roadmap })));
+const PublicTeacherProfile = lazy(() => import('./pages/PublicTeacherProfile').then(m => ({ default: m.PublicTeacherProfile })));
 
 export function App() {
   const { user, loading, logout } = useAuth();
@@ -23,16 +24,22 @@ export function App() {
   if (teacherMatch) {
     const teacherIdentifier = decodeURIComponent(teacherMatch[1]);
     return (
-      <PublicTeacherProfile
-        teacherId={teacherIdentifier}
-        onBack={() => window.location.href = '/'}
-        onLoginClick={() => window.location.href = '/'}
-      />
+      <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#030712' }}><CloudLoader /></div>}>
+        <PublicTeacherProfile
+          teacherId={teacherIdentifier}
+          onBack={() => window.location.href = '/'}
+          onLoginClick={() => window.location.href = '/'}
+        />
+      </Suspense>
     );
   }
 
   if (window.location.pathname === '/roadmap') {
-    return <Roadmap onBack={() => window.location.href = '/'} />;
+    return (
+      <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#030712' }}><CloudLoader /></div>}>
+        <Roadmap onBack={() => window.location.href = '/'} />
+      </Suspense>
+    );
   }
 
   if (window.location.pathname === '/marquee') {
@@ -97,25 +104,26 @@ export function App() {
 
   // Logged in but profile not complete
   if (!user.isProfileComplete) {
-    if (user.role === 'STUDENT') {
-      return <StudentOnboarding />;
-    }
-    if (user.role === 'TEACHER') {
-      return <TeacherOnboarding />;
-    }
+    return (
+      <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#030712' }}><CloudLoader /></div>}>
+        {user.role === 'STUDENT' ? <StudentOnboarding /> : <TeacherOnboarding />}
+      </Suspense>
+    );
   }
 
   // Logged in with complete profile
   return (
     <div className="app-container">
       <Navbar currentView={currentView} setCurrentView={setCurrentView} />
-      {user.role === 'ADMIN' ? (
-        <AdminDashboard />
-      ) : user.role === 'STUDENT' ? (
-        <StudentDashboard />
-      ) : (
-        <TeacherDashboard />
-      )}
+      <Suspense fallback={<div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CloudLoader /></div>}>
+        {user.role === 'ADMIN' ? (
+          <AdminDashboard />
+        ) : user.role === 'STUDENT' ? (
+          <StudentDashboard />
+        ) : (
+          <TeacherDashboard />
+        )}
+      </Suspense>
     </div>
   );
 }

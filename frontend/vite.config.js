@@ -45,6 +45,19 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-charts': ['recharts'],
+          'vendor-motion': ['framer-motion'],
+          'vendor-icons': ['lucide-react'],
+          'vendor-clerk': ['@clerk/clerk-react']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 600
+  },
   server: {
     port: 5173,
     proxy: {

@@ -101,6 +101,11 @@ model Review {
   flags          ReviewFlag[]
   replies        ReviewReply[]
   votes          ReviewVote[]
+
+  @@index([revieweeId])
+  @@index([reviewerId])
+  @@index([revieweeId, isFlagged])
+  @@index([createdAt])
 }
 
 model ReviewVote {

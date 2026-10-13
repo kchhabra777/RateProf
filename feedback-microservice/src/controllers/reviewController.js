@@ -1,4 +1,5 @@
 import prisma from "../lib/prisma.js";
+import jwt from "jsonwebtoken";
 import {
     createReview as createReviewService,
     getReviewsByReviewee,
@@ -96,39 +97,37 @@ export const getReviews = async (req, res) => {
 
         const result = await getReviewsByReviewee(id, page, limit);
 
-        let requesterEmail = req.headers["x-user-email"] ? req.headers["x-user-email"].toLowerCase() : "";
-        let requesterRole = req.headers["x-user-role"] ? req.headers["x-user-role"].toUpperCase() : "";
+        const GATEWAY_INTERNAL_SECRET = process.env.GATEWAY_INTERNAL_SECRET || "rateprof_internal_gw_sec_2026_ti_campus";
+        const JWT_SECRET = process.env.JWT_SECRET || "thapar_campus_feedback_jwt_secret_key_2026";
+        const isGatewayVerified = req.headers["x-gateway-secret"] === GATEWAY_INTERNAL_SECRET;
 
-        // Fallback: check Authorization Bearer token directly
+        let requesterEmail = isGatewayVerified && req.headers["x-user-email"] ? req.headers["x-user-email"].toLowerCase() : "";
+        let requesterRole = isGatewayVerified && req.headers["x-user-role"] ? req.headers["x-user-role"].toUpperCase() : "";
+
+        // Fallback: check Authorization Bearer token directly with cryptographic verification
         if (!requesterEmail || !requesterRole) {
             const authHeader = req.headers.authorization;
             if (authHeader && authHeader.startsWith("Bearer ")) {
                 try {
                     const token = authHeader.split(" ")[1];
-                    const parts = token.split('.');
-                    if (parts.length === 3) {
-                        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
-                        if (payload.email) requesterEmail = payload.email.toLowerCase();
-                        if (payload.role) requesterRole = payload.role.toUpperCase();
+                    const decoded = jwt.verify(token, JWT_SECRET);
+                    if (decoded) {
+                        if (decoded.email) requesterEmail = decoded.email.toLowerCase();
+                        if (decoded.role) requesterRole = decoded.role.toUpperCase();
                     }
-                } catch (e) {}
+                } catch (e) {
+                    // Invalid/expired token
+                }
             }
         }
 
-        let isAdmin = requesterRole === "ADMIN";
-
-        if (!isAdmin && requesterEmail) {
+        let isAdmin = false;
+        if (requesterRole === "ADMIN" && requesterEmail) {
             const user = await prisma.user.findUnique({
                 where: { email: requesterEmail }
             });
             if (user && user.role === "ADMIN") {
                 isAdmin = true;
-            } else {
-                const localPart = requesterEmail.split("@")[0] || "";
-                const baseLocalPart = localPart.split("+")[0];
-                const aliasPart = localPart.includes("+") ? localPart.split("+")[1] : "";
-                const adminEmails = ["doaa", "dosa", "admin"];
-                isAdmin = adminEmails.includes(baseLocalPart) || adminEmails.includes(aliasPart);
             }
         }
 

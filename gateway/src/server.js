@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import { createProxyMiddleware } from "http-proxy-middleware";
+import rateLimit from "express-rate-limit";
 import "dotenv/config";
 import { clerkAuthMiddleware } from "./middleware/clerkAuth.js";
 
@@ -9,10 +10,73 @@ const PORT = process.env.PORT || 8000;
 
 const AUTH_SERVICE_URL = (process.env.AUTH_SERVICE_URL || "http://localhost:5001").replace(/\/$/, "");
 const FEEDBACK_SERVICE_URL = (process.env.FEEDBACK_SERVICE_URL || "http://localhost:5000").replace(/\/$/, "");
+const GATEWAY_INTERNAL_SECRET = process.env.GATEWAY_INTERNAL_SECRET || "rateprof_internal_gw_sec_2026_ti_campus";
 
-app.use(cors());
+// Trust proxy for proper IP resolution in hosted environments (e.g. Render, Vercel, Railway)
+app.set("trust proxy", 1);
 
-// Clerk JWT Verification & Header Injection Middleware
+// Allowed origins
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://www.rateprof.tech",
+  "https://rateprof.tech"
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow non-browser requests or allowed origins
+    if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".vercel.app")) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Fallback to allow for testing
+    }
+  },
+  credentials: true
+}));
+
+// ── Rate Limiters ──
+// 1. General API limiter (protects against general DDoS)
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests from this IP, please try again after 15 minutes." }
+});
+
+// 2. Sensitive OTP send limiter (prevents Brevo quota burning and SMS/email spam)
+const otpSendLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 6,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many verification code requests. Please wait 15 minutes before requesting again." }
+});
+
+// 3. Sensitive Login attempt limiter (prevents brute-force)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many login attempts. Please try again after 15 minutes." }
+});
+
+// 4. Review creation limiter (prevents review spamming)
+const reviewSubmissionLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "You are submitting reviews too rapidly. Please slow down." }
+});
+
+app.use(generalLimiter);
+app.use(["/api/auth/forgot-password/send-otp", "/auth/forgot-password/send-otp"], otpSendLimiter);
+app.use(["/api/auth/login", "/auth/login"], loginLimiter);
+
+// Strip client spoofed headers and verify valid token
 app.use(clerkAuthMiddleware);
 
 const proxyOptions = (target) => ({
@@ -20,6 +84,9 @@ const proxyOptions = (target) => ({
   changeOrigin: true,
   on: {
     proxyReq: (proxyReq, req) => {
+      // Inject signed internal gateway secret to authenticate gateway-to-service traffic
+      proxyReq.setHeader("x-gateway-secret", GATEWAY_INTERNAL_SECRET);
+
       if (req.headers["x-user-id"]) {
         proxyReq.setHeader("x-user-id", req.headers["x-user-id"]);
       }
@@ -78,6 +145,7 @@ app.use(
 // Proxy /api/reviews/* and /reviews/* -> FEEDBACK_SERVICE_URL/reviews/*
 app.use(
   ["/api/reviews", "/reviews"],
+  reviewSubmissionLimiter,
   createProxyMiddleware(proxyOptions(`${FEEDBACK_SERVICE_URL}/reviews`))
 );
 
