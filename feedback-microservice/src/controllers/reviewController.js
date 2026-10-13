@@ -26,6 +26,13 @@ export const createReview = async (req, res) => {
             });
         }
 
+        // Prevent review impersonation: If request has an authenticated session from the gateway, enforce it
+        const isFromGateway = req.headers["x-gateway-secret"] === (process.env.GATEWAY_INTERNAL_SECRET || "rateprof_internal_gw_sec_2026_ti_campus");
+        const authenticatedUserId = req.headers["x-user-id"];
+        if (isFromGateway && authenticatedUserId) {
+            reviewer.userId = authenticatedUserId;
+        }
+
         if (!reviewee || !reviewee.userId) {
             return res.status(400).json({
                 error: "Reviewee teacher information is required"
