@@ -8,7 +8,8 @@ export const addCourseOffering = async ({
   courseName,
   batchTaught,
   branchTaught,
-  academicYear
+  academicYear,
+  isElective
 }) => {
   const teacher = await prisma.teacherProfile.findUnique({
     where: { userId: teacherUserId }
@@ -22,6 +23,7 @@ export const addCourseOffering = async ({
     throw new Error("Course Code, Course Name, and Batch Taught are required.");
   }
 
+  invalidateOfferingsCache();
   return await prisma.courseOffering.create({
     data: {
       teacherId: teacher.id,
@@ -29,7 +31,8 @@ export const addCourseOffering = async ({
       courseName: courseName.trim(),
       batchTaught: batchTaught.trim().toUpperCase(),
       branchTaught: (branchTaught && branchTaught.trim().toUpperCase()) || "ALL",
-      academicYear: (academicYear && academicYear.trim()) || "2026-2027 ODD"
+      academicYear: (academicYear && academicYear.trim()) || "2026-2027 ODD",
+      isElective: Boolean(isElective)
     }
   });
 };
@@ -41,7 +44,8 @@ export const updateCourseOffering = async ({
   courseName,
   batchTaught,
   branchTaught,
-  academicYear
+  academicYear,
+  isElective
 }) => {
   const teacher = await prisma.teacherProfile.findUnique({
     where: { userId: teacherUserId }
@@ -71,7 +75,8 @@ export const updateCourseOffering = async ({
       ...(courseName ? { courseName: courseName.trim() } : {}),
       ...(batchTaught ? { batchTaught: batchTaught.trim().toUpperCase() } : {}),
       ...(branchTaught ? { branchTaught: branchTaught.trim().toUpperCase() } : {}),
-      ...(academicYear ? { academicYear: academicYear.trim() } : {})
+      ...(academicYear ? { academicYear: academicYear.trim() } : {}),
+      ...(typeof isElective === 'boolean' ? { isElective } : {})
     }
   });
 };
@@ -123,7 +128,59 @@ export const invalidateOfferingsCache = () => {
   lastOfferingsFetchTime = 0;
 };
 
-export const getEligibleTeachersForStudent = async ({ batch, branch }) => {
+const FREE_ELECTIVE_CODES = new Set([
+  'UMA069', 'UHU018', 'UMA070', 'UTD004', 'UHU017', 'UCS002',
+  'UPH064', 'UEN006', 'UHU051', 'UHU053', 'UBT510', 'UHU016'
+]);
+
+export const getAvailableElectives = async ({ branch, year } = {}) => {
+  const now = Date.now();
+  if (!cachedAllOfferings || now - lastOfferingsFetchTime > OFFERINGS_CACHE_TTL) {
+    cachedAllOfferings = await prisma.courseOffering.findMany({
+      include: {
+        teacher: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true
+              }
+            }
+          }
+        }
+      }
+    });
+    lastOfferingsFetchTime = now;
+  }
+
+  const electiveOfferings = cachedAllOfferings.filter(off => off.isElective);
+  
+  // Group by distinct courseCode
+  const courseMap = new Map();
+  for (const off of electiveOfferings) {
+    const code = off.courseCode.trim().toUpperCase();
+    if (!courseMap.has(code)) {
+      const isFree = FREE_ELECTIVE_CODES.has(code);
+      courseMap.set(code, {
+        courseCode: code,
+        courseName: off.courseName,
+        branchTaught: off.branchTaught,
+        academicYear: off.academicYear,
+        electiveType: isFree ? "FREE" : "EL-1",
+        teachers: []
+      });
+    }
+    courseMap.get(code).teachers.push({
+      teacherId: off.teacher.user.id,
+      fullName: off.teacher.fullName,
+      ltp: off.ltp || "L"
+    });
+  }
+
+  return Array.from(courseMap.values());
+};
+
+export const getEligibleTeachersForStudent = async ({ batch, branch, studentUserId, electives }) => {
   const normalizedBatch = batch ? batch.trim().toUpperCase() : "";
   let normalizedBranch = branch ? branch.trim().toUpperCase() : "";
 
@@ -133,6 +190,27 @@ export const getEligibleTeachersForStudent = async ({ batch, branch }) => {
   } else if (normalizedBatch.includes('C') && !normalizedBatch.includes('COPC')) {
     normalizedBranch = 'COE';
   }
+
+  // Determine student's chosen electives (if any)
+  let studentElectives = [];
+  if (Array.isArray(electives)) {
+    studentElectives = electives;
+  } else if (typeof electives === 'string' && electives.trim()) {
+    studentElectives = electives.split(",").map(s => s.trim());
+  } else if (studentUserId) {
+    const student = await prisma.studentProfile.findUnique({
+      where: { userId: studentUserId }
+    });
+    if (student?.selectedElectives) {
+      studentElectives = student.selectedElectives;
+    }
+  }
+
+  const selectedElectivesSet = new Set(
+    studentElectives
+      .map(e => String(e).trim().toUpperCase())
+      .filter(e => e && e !== "NONE" && e !== "NULL")
+  );
 
   // Use cached offerings if fresh (< 60s)
   const now = Date.now();
@@ -170,8 +248,19 @@ export const getEligibleTeachersForStudent = async ({ batch, branch }) => {
     "BIO": ["BIOTECHNOLOGY", "BIOTECHNOLOGY ENGG"]
   };
 
-  // Filter matching batch (exact, comma-separated, or ALL) and branch
+  // Filter matching batch/branch for core, or matching student's enrolled electives
   const filteredOfferings = allOfferings.filter((off) => {
+    // 1. If this offering is an ELECTIVE:
+    if (off.isElective) {
+      // It ONLY matches if the student explicitly selected this courseCode!
+      // If student has None or didn't select this elective, skip!
+      if (!selectedElectivesSet.has(off.courseCode.trim().toUpperCase())) {
+        return false;
+      }
+      return true;
+    }
+
+    // 2. Otherwise it is a CORE course: match by batch and branch
     const batches = off.batchTaught.split(",").map((b) => b.trim().toUpperCase());
     const isSpecificBatchMatch = batches.includes(normalizedBatch) || off.batchTaught === normalizedBatch;
     const isAllBatch = off.batchTaught === "ALL";
@@ -228,6 +317,7 @@ export const getEligibleTeachersForStudent = async ({ batch, branch }) => {
       batchTaught: off.batchTaught,
       branchTaught: off.branchTaught,
       ltp: off.ltp || "L",
+      isElective: Boolean(off.isElective),
       academicYear: off.academicYear
     });
   }
@@ -260,8 +350,24 @@ export const verifyStudentTeacherEligibility = async ({ studentUserId, teacherUs
     effectiveBranch = 'COE';
   }
 
-  // Check if teacher has any offering matching student's batch
+  const selectedElectivesSet = new Set(
+    (student.selectedElectives || [])
+      .map(e => String(e).trim().toUpperCase())
+      .filter(e => e && e !== "NONE")
+  );
+
+  // Check if teacher has any offering matching student's batch or chosen electives
   const matchingOffering = teacher.offerings.find((off) => {
+    // If it's an elective
+    if (off.isElective) {
+      if (!selectedElectivesSet.has(off.courseCode.trim().toUpperCase())) {
+        return false;
+      }
+      const courseMatches = !courseCode || off.courseCode === courseCode.toUpperCase();
+      return courseMatches;
+    }
+
+    // Otherwise core course
     const batches = off.batchTaught.split(",").map((b) => b.trim().toUpperCase());
     const isSpecificBatchMatch = batches.includes(student.batch) || off.batchTaught === student.batch;
     const isAllBatch = off.batchTaught === "ALL";
@@ -283,7 +389,7 @@ export const verifyStudentTeacherEligibility = async ({ studentUserId, teacherUs
   if (!matchingOffering && teacher.offerings.length > 0) {
     return {
       eligible: false,
-      reason: `Teacher is not registered as having taught batch ${student.batch} (${effectiveBranch})`
+      reason: `Teacher is not registered as having taught batch ${student.batch} (${effectiveBranch}) or your selected electives.`
     };
   }
 

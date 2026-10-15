@@ -4,7 +4,8 @@ import {
   deleteCourseOffering,
   getTeacherOfferings,
   getEligibleTeachersForStudent,
-  verifyStudentTeacherEligibility
+  verifyStudentTeacherEligibility,
+  getAvailableElectives
 } from "../services/courseService.js";
 import prisma from "../lib/prisma.js";
 
@@ -79,6 +80,16 @@ export const getMyOfferings = async (req, res) => {
   }
 };
 
+export const getElectives = async (req, res) => {
+  try {
+    const { branch, year } = req.query;
+    const electives = await getAvailableElectives({ branch, year });
+    return res.status(200).json({ electives });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || "Failed to fetch electives" });
+  }
+};
+
 const eligibleTeachersCache = new Map();
 const ELIGIBLE_CACHE_TTL = 60 * 1000;
 
@@ -86,29 +97,42 @@ export const getEligibleTeachers = async (req, res) => {
   try {
     let batch = req.query.batch;
     let branch = req.query.branch;
+    let electives = req.query.electives;
 
-    if (!batch && req.user?.id) {
+    if (req.user?.id) {
       const student = await prisma.studentProfile.findUnique({
         where: { userId: req.user.id }
       });
       if (student) {
-        batch = student.batch;
+        batch = batch || student.batch;
         branch = branch || student.branch;
+        if (!electives && student.selectedElectives && student.selectedElectives.length > 0) {
+          electives = student.selectedElectives;
+        }
       }
     }
 
     if (!batch) {
       batch = req.user?.studentProfile?.batch || req.user?.detectedBatch || "3Q11";
       branch = branch || req.user?.studentProfile?.branch || "COE";
+      if (!electives && req.user?.studentProfile?.selectedElectives) {
+        electives = req.user.studentProfile.selectedElectives;
+      }
     }
 
-    const cacheKey = `${(batch || "").toUpperCase()}_${(branch || "").toUpperCase()}`;
+    const electivesKey = Array.isArray(electives) ? electives.sort().join(",") : (electives || "");
+    const cacheKey = `${(batch || "").toUpperCase()}_${(branch || "").toUpperCase()}_${electivesKey.toUpperCase()}`;
     const cached = eligibleTeachersCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < ELIGIBLE_CACHE_TTL) {
       return res.status(200).json({ teachers: cached.data });
     }
 
-    const teachers = await getEligibleTeachersForStudent({ batch, branch });
+    const teachers = await getEligibleTeachersForStudent({
+      batch,
+      branch,
+      studentUserId: req.user?.id,
+      electives
+    });
     eligibleTeachersCache.set(cacheKey, { data: teachers, timestamp: Date.now() });
 
     return res.status(200).json({ teachers });

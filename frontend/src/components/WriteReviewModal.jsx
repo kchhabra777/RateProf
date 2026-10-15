@@ -2,7 +2,7 @@ import { getTagTheme } from '../lib/tagTheme';
 import React, { useState, useEffect } from 'react';
 import { EmojiRatingSlider } from './EmojiRatingSlider';
 import { X, CheckCircle, AlertCircle, Clock } from 'lucide-react';
-import { api } from '../api/client';
+import { api, isFreeElective } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
 export const WriteReviewModal = ({ teacher, onClose, onSuccess }) => {
@@ -177,7 +177,7 @@ export const WriteReviewModal = ({ teacher, onClose, onSuccess }) => {
                 <option value="">Select Course...</option>
                 {courses.map((c, i) => (
                   <option key={c.id || i} value={c.id || c.courseCode}>
-                    {c.courseCode} - {c.courseName} (Batch {c.batchTaught}) {c.ltp ? `[${c.ltp}]` : ''}
+                    {c.courseCode} - {c.courseName} {c.isElective ? `[${isFreeElective(c.courseCode) ? 'Free Elective' : 'Elective EL-1'}]` : (c.batchTaught && c.batchTaught !== 'ALL' ? `(${c.batchTaught})` : '')} {c.ltp ? `[${c.ltp}]` : ''}
                   </option>
                 ))}
               </select>

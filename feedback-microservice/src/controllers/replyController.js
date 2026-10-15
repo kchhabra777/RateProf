@@ -89,12 +89,11 @@ export const voteOnReply = async (req, res) => {
             voteType: vote.type
         });
 
-        const upvotes = await prisma.replyVote.count({
-            where: { replyId: numReplyId, voteType: "UP" }
-        });
-        const downvotes = await prisma.replyVote.count({
-            where: { replyId: numReplyId, voteType: "DOWN" }
-        });
+        // Fetch exact aggregated counts from DB in parallel
+        const [upvotes, downvotes] = await Promise.all([
+            prisma.replyVote.count({ where: { replyId: numReplyId, voteType: "UP" } }),
+            prisma.replyVote.count({ where: { replyId: numReplyId, voteType: "DOWN" } })
+        ]);
 
         return res.status(200).json({
             vote: result,

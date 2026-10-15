@@ -125,42 +125,44 @@ export const deleteTeacher = async (req, res) => {
     const targetUserId = teacherProfile?.userId || id;
     const profileId = teacherProfile?.id;
 
-    // 2. Cascade delete course offerings if any
+    if (!teacherProfile && !targetUserId) {
+      return res.status(404).json({ error: "Teacher not found" });
+    }
+
+    // 2. Cascade cleanup related child records concurrently first
+    const childTasks = [];
+
     if (profileId) {
-      await prisma.courseOffering.deleteMany({
-        where: { teacherId: profileId }
-      });
-      await prisma.teacherProfile.deleteMany({
-        where: { id: profileId }
-      });
+      childTasks.push(
+        prisma.courseOffering.deleteMany({ where: { teacherId: profileId } }),
+        prisma.teacherNameSuggestion.deleteMany({ where: { teacherId: profileId } })
+      );
     }
 
-    // 3. Cleanup ratings and reviews associated with this teacher
-    try {
-      await prisma.profileRating.deleteMany({
-        where: {
-          OR: [
-            { userId: targetUserId },
-            ...(profileId ? [{ userId: profileId }] : [])
-          ]
-        }
-      });
-      await prisma.review.deleteMany({
-        where: {
-          OR: [
-            { revieweeId: targetUserId },
-            ...(profileId ? [{ revieweeId: profileId }] : [])
-          ]
-        }
-      });
-    } catch (e) {
-      console.warn("Cleanup reviews/ratings note:", e.message);
+    const revieweeIds = [
+      ...(targetUserId ? [targetUserId] : []),
+      ...(profileId && profileId !== targetUserId ? [profileId] : [])
+    ];
+
+    if (revieweeIds.length > 0) {
+      childTasks.push(
+        prisma.profileRating.deleteMany({ where: { userId: { in: revieweeIds } } }),
+        prisma.review.deleteMany({ where: { revieweeId: { in: revieweeIds } } })
+      );
     }
 
-    // 4. Delete user record if exists
-    await prisma.user.deleteMany({
-      where: { id: targetUserId }
-    });
+    if (childTasks.length > 0) {
+      await Promise.allSettled(childTasks);
+    }
+
+    // 3. Remove teacherProfile and user records safely
+    if (profileId) {
+      await prisma.teacherProfile.deleteMany({ where: { id: profileId } }).catch(err => console.warn('TeacherProfile delete warning:', err.message));
+    }
+
+    if (targetUserId) {
+      await prisma.user.deleteMany({ where: { id: targetUserId } }).catch(err => console.warn('User delete warning:', err.message));
+    }
 
     res.status(200).json({ success: true, message: "Teacher deleted successfully" });
   } catch (error) {
@@ -168,6 +170,7 @@ export const deleteTeacher = async (req, res) => {
     res.status(500).json({ error: error.message || "Failed to delete teacher" });
   }
 };
+
 export const getTeacherCourses = async (req, res) => {
   try {
     const { id } = req.params;

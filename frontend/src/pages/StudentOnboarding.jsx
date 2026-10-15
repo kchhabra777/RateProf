@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { ALLOWED_BATCHES } from '../api/client';
-import { User, GraduationCap, Building, AlertCircle, LogOut } from 'lucide-react';
+import { api, ALLOWED_BATCHES, OFFICIAL_ELECTIVES } from '../api/client';
+import { User, GraduationCap, Building, AlertCircle, LogOut, BookOpen } from 'lucide-react';
 
 export const StudentOnboarding = () => {
   const { user, onboardStudent, logout } = useAuth();
@@ -18,9 +18,22 @@ export const StudentOnboarding = () => {
   const [branch, setBranch] = useState('COE');
   const [batch, setBatch] = useState('');
   const [yearOfStudy, setYearOfStudy] = useState(3);
+  const [selectedDisciplineElective, setSelectedDisciplineElective] = useState('');
+  const [selectedFreeElective, setSelectedFreeElective] = useState('');
+  const [availableElectives, setAvailableElectives] = useState([]);
   const [autoDetectedNotice, setAutoDetectedNotice] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    api.getElectives().then(res => {
+      if (res.electives && res.electives.length > 0) {
+        setAvailableElectives(res.electives);
+      }
+    }).catch(err => {
+      console.warn("Could not load electives in onboarding:", err);
+    });
+  }, []);
 
   const handleRollNumberChange = (val) => {
     const clean = val.replace(/\D/g, '');
@@ -76,6 +89,10 @@ export const StudentOnboarding = () => {
         detectedBranch = "BT";
         letter = "U";
         branchName = "Biotechnology";
+      } else if (dept === "83") {
+        detectedBranch = "COE";
+        letter = "X";
+        branchName = "Computer Engineering (LEET)";
       }
       
       let year = 3;
@@ -93,6 +110,7 @@ export const StudentOnboarding = () => {
 
       setBranch(detectedBranch);
       setYearOfStudy(year);
+      if (!batch) setBatch(autoBatch);
       setAutoDetectedNotice(`✨ Automatically detected Branch: ${branchName} (Year ${year}) from your roll number.`);
     } else {
       setAutoDetectedNotice('');
@@ -123,13 +141,19 @@ export const StudentOnboarding = () => {
       return;
     }
 
-    if (!/^\d{10}$/.test(rollNumber.trim())) {
-      setError("Roll Number must be exactly 10 numeric digits (e.g. 1024031234).");
+    if (!/^\d{9,10}$/.test(rollNumber.trim())) {
+      setError("Roll Number must be 9 or 10 numeric digits (e.g. 1024031234 or 102103123).");
       return;
     }
 
     setLoading(true);
     setError('');
+
+    const electivesToSave = [];
+    if (Number(yearOfStudy) >= 3) {
+      if (selectedDisciplineElective) electivesToSave.push(selectedDisciplineElective);
+      if (selectedFreeElective) electivesToSave.push(selectedFreeElective);
+    }
 
     try {
       await onboardStudent({
@@ -137,7 +161,8 @@ export const StudentOnboarding = () => {
         rollNumber: rollNumber.trim(),
         branch,
         batch: batch.toUpperCase(),
-        yearOfStudy: Number(yearOfStudy)
+        yearOfStudy: Number(yearOfStudy),
+        selectedElectives: electivesToSave
       });
     } catch (err) {
       setError(err.message || "Failed to save profile");
@@ -209,19 +234,19 @@ export const StudentOnboarding = () => {
             />
           </div>
 
-          {/* 10-Digit Roll Number */}
+          {/* University Roll Number (9 or 10 Digits) */}
           <div className="form-group">
-            <label className="form-label">10-Digit Roll Number *</label>
+            <label className="form-label">University Roll Number (9 or 10 Digits) *</label>
             <input
               type="text"
               maxLength={10}
               className="form-input"
-              placeholder="e.g. 1024170003"
+              placeholder="e.g. 1024170003 or 102103123"
               value={rollNumber}
               onChange={(e) => handleRollNumberChange(e.target.value)}
               required
-              pattern="\d{10}"
-              title="Must be 10 numeric digits"
+              pattern="\d{9,10}"
+              title="Must be 9 or 10 numeric digits"
             />
             {autoDetectedNotice ? (
               <div style={{
@@ -238,7 +263,7 @@ export const StudentOnboarding = () => {
               </div>
             ) : (
               <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
-                Must be exactly 10 digits as issued on your Thapar ID card.
+                Must be 9 or 10 numeric digits as issued on your University / Thapar ID card.
               </span>
             )}
           </div>
@@ -318,7 +343,14 @@ export const StudentOnboarding = () => {
             <select
               className="form-select"
               value={yearOfStudy}
-              onChange={(e) => setYearOfStudy(Number(e.target.value))}
+              onChange={(e) => {
+                const yr = Number(e.target.value);
+                setYearOfStudy(yr);
+                if (yr < 3) {
+                  setSelectedDisciplineElective('');
+                  setSelectedFreeElective('');
+                }
+              }}
               required
             >
               <option value={1}>1st Year (Fresher)</option>
@@ -327,6 +359,65 @@ export const StudentOnboarding = () => {
               <option value={4}>4th Year (Senior / Final)</option>
             </select>
           </div>
+
+          {/* Electives Selection (3rd & 4th Year Only) */}
+          {yearOfStudy >= 3 ? (
+            <div className="form-group" style={{ background: 'var(--bg-card-subtle)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <BookOpen size={18} style={{ color: 'var(--primary)' }} />
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700 }}>Semester Electives (Optional)</h4>
+                  <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>As allocated in your Webkiosk portal</span>
+                </div>
+              </div>
+
+              {/* Discipline Elective [EL-1] */}
+              <div style={{ marginBottom: '12px' }}>
+                <label className="form-label" style={{ fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
+                  Discipline Elective [EL-1]
+                </label>
+                <select
+                  className="form-select"
+                  value={selectedDisciplineElective}
+                  onChange={(e) => setSelectedDisciplineElective(e.target.value)}
+                >
+                  <option value="">None / No Discipline Elective</option>
+                  {OFFICIAL_ELECTIVES.disciplineElectives.map(el => (
+                    <option key={el.code} value={el.code}>
+                      {el.code} - {el.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Free Elective */}
+              <div>
+                <label className="form-label" style={{ fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
+                  Free Elective (Open Elective)
+                </label>
+                <select
+                  className="form-select"
+                  value={selectedFreeElective}
+                  onChange={(e) => setSelectedFreeElective(e.target.value)}
+                >
+                  <option value="">None / No Free Elective</option>
+                  {OFFICIAL_ELECTIVES.freeElectives.map(el => (
+                    <option key={el.code} value={el.code}>
+                      {el.code} - {el.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginTop: '10px' }}>
+                Only faculty teaching your chosen electives (along with your core batch faculty) will appear in your review list. You can leave either as <strong>None</strong> and change anytime from your dashboard.
+              </span>
+            </div>
+          ) : (
+            <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-light)', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
+              💡 <strong>1st &amp; 2nd Year Curriculum:</strong> Fixed core subjects only (No electives applicable).
+            </div>
+          )}
 
           <button
             type="submit"

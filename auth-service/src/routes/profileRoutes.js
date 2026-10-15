@@ -8,7 +8,8 @@ import {
   requestBatchChange,
   getMyBatchRequests,
   getCRBatchRequests,
-  getStudentLeaderboard
+  getStudentLeaderboard,
+  updateElectives
 } from "../controllers/profileController.js";
 import { requireAuth } from "../middlewares/authMiddleware.js";
 import { requireRole } from "../middlewares/roleMiddleware.js";
@@ -17,6 +18,7 @@ const router = express.Router();
 
 router.get("/students/leaderboard", getStudentLeaderboard);
 router.post("/student", requireAuth, requireRole("STUDENT"), onboardStudent);
+router.put("/student/electives", requireAuth, requireRole("STUDENT"), updateElectives);
 router.post("/student/request-batch-change", requireAuth, requireRole("STUDENT"), requestBatchChange);
 router.get("/student/batch-requests", requireAuth, requireRole("STUDENT"), getMyBatchRequests);
 router.get("/student/cr/batch-requests", requireAuth, requireRole("STUDENT"), getCRBatchRequests);

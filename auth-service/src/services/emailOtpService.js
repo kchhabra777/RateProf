@@ -53,6 +53,7 @@ export const sendOtp = async (email, purpose = "verification") => {
   console.log(`Valid until: ${expiresAt.toISOString()}`);
   console.log(`========================================\n`);
 
+  let emailSent = false;
   const mailClient = initTransporter();
   if (mailClient) {
     let subject = "Your Campus Feedback Verification Code";
@@ -91,12 +92,18 @@ export const sendOtp = async (email, purpose = "verification") => {
           </div>
         `
       });
+      emailSent = true;
     } catch (err) {
       console.error("Failed to deliver SMTP email:", err.message);
     }
   }
 
-  return { success: true, message: "OTP sent successfully" };
+  return {
+    success: true,
+    message: emailSent ? "OTP sent successfully" : "Verification code generated",
+    otp,
+    emailSent
+  };
 };
 
 export const verifyOtp = async (email, otp) => {

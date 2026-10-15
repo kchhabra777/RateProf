@@ -45,7 +45,11 @@ model StudentProfile {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   fullName    String?
+  selectedElectives String[] @default([])
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([xp(sort: Desc)])
+  @@index([batch, branch])
 }
 
 model TeacherProfile {
@@ -76,8 +80,14 @@ model CourseOffering {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @default(now()) @updatedAt
   ltp          String         @default("L")
+  isElective   Boolean        @default(false)
   isArchived   Boolean        @default(false)
   teacher      TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([batchTaught, branchTaught])
+  @@index([teacherId])
+  @@index([courseCode])
+  @@index([isElective])
 }
 
 model Review {
@@ -104,6 +114,7 @@ model Review {
 
   @@index([revieweeId])
   @@index([reviewerId])
+  @@index([reviewerId, revieweeId, courseCode])
   @@index([revieweeId, isFlagged])
   @@index([createdAt])
 }
@@ -127,6 +138,9 @@ model ReviewFlag {
   status     FlagStatus @default(PENDING)
   createdAt  DateTime   @default(now())
   review     Review     @relation(fields: [reviewId], references: [reviewId], onDelete: Cascade)
+
+  @@index([reviewId, status])
+  @@index([reporterId])
 }
 
 model ReviewReply {

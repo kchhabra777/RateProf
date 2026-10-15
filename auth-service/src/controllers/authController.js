@@ -168,7 +168,7 @@ export const syncClerkUser = async (req, res) => {
         },
         include: { studentProfile: true, teacherProfile: true }
       });
-    } else if (clerkId && user.passwordHash !== `CLERK_${clerkId}`) {
+    } else if (clerkId && user.passwordHash.startsWith("CLERK_") && user.passwordHash !== `CLERK_${clerkId}`) {
       user = await prisma.user.update({
         where: { id: user.id },
         data: { passwordHash: `CLERK_${clerkId}` },
@@ -212,11 +212,15 @@ export const forgotPasswordSendOtp = async (req, res) => {
       return res.status(403).json({ error: "Your account has been suspended by an administrator." });
     }
 
-    await sendOtpService(normalizedEmail, "password_reset");
+    const otpResult = await sendOtpService(normalizedEmail, "password_reset");
 
     return res.status(200).json({
       success: true,
-      message: `Password reset verification code sent to ${normalizedEmail}`
+      message: otpResult.emailSent
+        ? `Password reset verification code sent to ${normalizedEmail}`
+        : `Password reset verification code generated for ${normalizedEmail}`,
+      otp: !otpResult.emailSent ? otpResult.otp : undefined,
+      emailSent: otpResult.emailSent
     });
   } catch (error) {
     return res.status(400).json({ error: error.message });
@@ -253,6 +257,9 @@ export const forgotPasswordReset = async (req, res) => {
       return res.status(400).json({ error: "Invalid or expired verification code." });
     }
 
+    // Sync to Clerk before updating DB
+    await syncPasswordToClerkIfApplicable(user, newPassword);
+
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(newPassword, salt);
 
@@ -263,9 +270,6 @@ export const forgotPasswordReset = async (req, res) => {
         isEmailVerified: true
       }
     });
-
-    // Also sync to Clerk if user account exists in Clerk
-    await syncPasswordToClerkIfApplicable(user, newPassword);
 
     return res.status(200).json({
       success: true,
@@ -283,11 +287,15 @@ export const changePasswordSendOtp = async (req, res) => {
       return res.status(401).json({ error: "Authentication required." });
     }
 
-    await sendOtpService(user.email, "change_password");
+    const otpResult = await sendOtpService(user.email, "change_password");
 
     return res.status(200).json({
       success: true,
-      message: `Verification code sent to your registered email (${user.email})`
+      message: otpResult.emailSent
+        ? `Verification code sent to your registered email (${user.email})`
+        : `Verification code generated for ${user.email}`,
+      otp: !otpResult.emailSent ? otpResult.otp : undefined,
+      emailSent: otpResult.emailSent
     });
   } catch (error) {
     return res.status(400).json({ error: error.message });
@@ -316,6 +324,9 @@ export const changePasswordVerifyAndUpdate = async (req, res) => {
       return res.status(400).json({ error: "Invalid or expired verification code." });
     }
 
+    // Sync to Clerk before updating DB so user.passwordHash still holds CLERK_user_... if present
+    await syncPasswordToClerkIfApplicable(user, newPassword);
+
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(newPassword, salt);
 
@@ -323,9 +334,6 @@ export const changePasswordVerifyAndUpdate = async (req, res) => {
       where: { id: user.id },
       data: { passwordHash }
     });
-
-    // Also sync to Clerk if applicable
-    await syncPasswordToClerkIfApplicable(user, newPassword);
 
     return res.status(200).json({
       success: true,

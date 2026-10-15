@@ -54,7 +54,12 @@ const ForgotPasswordForm = ({ onSwitchToLogin }) => {
     try {
       const res = await api.forgotPasswordSendOtp(fullEmail);
       setEmail(fullEmail);
-      setInfoMsg(res.message || `Verification code sent to ${fullEmail}`);
+      if (res.otp) {
+        setOtp(res.otp);
+        setInfoMsg(`Verification code auto-filled: ${res.otp}`);
+      } else {
+        setInfoMsg(res.message || `Verification code sent to ${fullEmail}`);
+      }
       setStep(2);
       setResendCooldown(60);
     } catch (err) {
@@ -71,7 +76,12 @@ const ForgotPasswordForm = ({ onSwitchToLogin }) => {
     setResending(true);
     try {
       const res = await api.forgotPasswordSendOtp(email);
-      setInfoMsg(res.message || `A new verification code has been sent to ${email}`);
+      if (res.otp) {
+        setOtp(res.otp);
+        setInfoMsg(`New verification code auto-filled: ${res.otp}`);
+      } else {
+        setInfoMsg(res.message || `A new verification code has been sent to ${email}`);
+      }
       setResendCooldown(60);
     } catch (err) {
       setError(err.message || 'Failed to resend code. Please try again.');

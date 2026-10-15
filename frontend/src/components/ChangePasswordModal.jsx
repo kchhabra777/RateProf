@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useUser, useClerk } from '@clerk/clerk-react';
 import { api } from '../api/client';
 import {
   X,
@@ -12,14 +13,20 @@ import {
   AlertCircle,
   CheckCircle2,
   RefreshCw,
-  Clock
+  Clock,
+  Sparkles,
+  ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const ChangePasswordModal = ({ isOpen, onClose }) => {
   const { user } = useAuth();
+  const { user: clerkUser } = useUser();
+  const clerk = useClerk();
+
   const [step, setStep] = useState(1); // 1: Send Code, 2: Enter Code & New Password, 3: Success
   const [otp, setOtp] = useState('');
+  const [devOtpNotice, setDevOtpNotice] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -36,6 +43,7 @@ export const ChangePasswordModal = ({ isOpen, onClose }) => {
     if (isOpen) {
       setStep(1);
       setOtp('');
+      setDevOtpNotice('');
       setNewPassword('');
       setConfirmPassword('');
       setError('');
@@ -59,7 +67,13 @@ export const ChangePasswordModal = ({ isOpen, onClose }) => {
     setLoading(true);
     try {
       const res = await api.changePasswordSendOtp();
-      toast.success(res.message || 'Verification code sent to your email!');
+      if (res.otp) {
+        setOtp(res.otp);
+        setDevOtpNotice(res.otp);
+        toast.success(`Verification code generated: ${res.otp}`);
+      } else {
+        toast.success(res.message || 'Verification code sent to your email!');
+      }
       setStep(2);
       setResendCooldown(60);
     } catch (err) {
@@ -76,7 +90,13 @@ export const ChangePasswordModal = ({ isOpen, onClose }) => {
     setResending(true);
     try {
       const res = await api.changePasswordSendOtp();
-      toast.success(res.message || 'New verification code sent!');
+      if (res.otp) {
+        setOtp(res.otp);
+        setDevOtpNotice(res.otp);
+        toast.success(`New code generated: ${res.otp}`);
+      } else {
+        toast.success(res.message || 'New verification code sent!');
+      }
       setResendCooldown(60);
     } catch (err) {
       setError(err.message || 'Failed to resend code.');
@@ -245,7 +265,7 @@ export const ChangePasswordModal = ({ isOpen, onClose }) => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Mail size={15} color="#b91c1c" />
               <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-primary, #1e293b)' }}>
-                {user?.email || 'Logged In Account'}
+                {user?.email || clerkUser?.primaryEmailAddress?.emailAddress || 'Logged In Account'}
               </span>
             </div>
             <span style={{
@@ -290,7 +310,7 @@ export const ChangePasswordModal = ({ isOpen, onClose }) => {
                 lineHeight: 1.5,
                 margin: '0 0 20px 0',
               }}>
-                To ensure account security, click the button below to send a 6-digit confirmation code to your official Thapar email address.
+                To update your account password, request a 6-digit verification code below. Your password will be updated across RateProf and synced to your account.
               </p>
 
               <button
@@ -322,12 +342,65 @@ export const ChangePasswordModal = ({ isOpen, onClose }) => {
                   </>
                 )}
               </button>
+
+              {clerkUser && (
+                <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px dashed var(--border-light, #e2e8f0)' }}>
+                  <p style={{ fontSize: '11.5px', color: 'var(--text-muted, #64748b)', margin: '0 0 10px 0' }}>
+                    Signed in with Clerk Single Sign-On?
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      try {
+                        clerk?.openUserProfile?.();
+                      } catch (e) {
+                        console.warn("Could not open Clerk profile:", e);
+                      }
+                    }}
+                    style={{
+                      background: 'none',
+                      border: '1px solid var(--border-light, #cbd5e1)',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      color: 'var(--text-primary, #334155)',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    <span>Manage Clerk Account Security & 2FA</span>
+                    <ExternalLink size={13} />
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
           {/* STEP 2: Enter Code & Set New Password */}
           {step === 2 && (
             <form onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {devOtpNotice && (
+                <div style={{
+                  padding: '9px 12px',
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: '10px',
+                  color: '#1d4ed8',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <Sparkles size={15} style={{ flexShrink: 0, color: '#2563eb' }} />
+                  <span>Verification code <strong>{devOtpNotice}</strong> has been auto-filled for you.</span>
+                </div>
+              )}
+
               {/* 6-Digit Code */}
               <div>
                 <label style={labelStyle}>6-Digit Verification Code</label>

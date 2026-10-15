@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../api/client';
+import { api, OFFICIAL_ELECTIVES, getElectiveName, isFreeElective } from '../api/client';
 import { TeacherCard } from '../components/TeacherCard';
 import { ReviewCard } from '../components/ReviewCard';
 import { WriteReviewModal } from '../components/WriteReviewModal';
@@ -48,7 +48,7 @@ import { toast } from 'sonner';
 
 
 export const StudentDashboard = () => {
-  const { user, onboardStudent } = useAuth();
+  const { user, onboardStudent, setUser } = useAuth();
   const [tab, setTab] = useState('eligible'); // 'eligible' | 'all'
   const [mobileTab, setMobileTab] = useState('directory'); // 'directory' | 'feed' | 'leaderboard' | 'profile'
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -57,6 +57,29 @@ export const StudentDashboard = () => {
   const [teacherRatingsMap, setTeacherRatingsMap] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Electives state (Dual electives: EL-1 and Free Elective)
+  const studentYear = user?.studentProfile?.yearOfStudy || 1;
+  const studentElectives = user?.studentProfile?.selectedElectives || [];
+  const currentDisciplineElective = studentElectives.find(code => !isFreeElective(code)) || '';
+  const currentFreeElective = studentElectives.find(code => isFreeElective(code)) || '';
+
+  const [isElectiveModalOpen, setIsElectiveModalOpen] = useState(false);
+  const [modalDisciplineElective, setModalDisciplineElective] = useState(currentDisciplineElective);
+  const [modalFreeElective, setModalFreeElective] = useState(currentFreeElective);
+  const [savingElective, setSavingElective] = useState(false);
+  const [availableElectives, setAvailableElectives] = useState([]);
+
+  useEffect(() => {
+    api.getElectives().then(res => {
+      if (res.electives) setAvailableElectives(res.electives);
+    }).catch(e => console.warn("Could not load electives in dashboard:", e));
+  }, []);
+
+  useEffect(() => {
+    setModalDisciplineElective(currentDisciplineElective);
+    setModalFreeElective(currentFreeElective);
+  }, [currentDisciplineElective, currentFreeElective]);
 
   // Selected teacher view (viewing reviews)
   const [selectedTeacher, setSelectedTeacher] = useState(null);
@@ -168,14 +191,40 @@ export const StudentDashboard = () => {
     }
   };
 
+  const handleSaveElective = async () => {
+    setSavingElective(true);
+    try {
+      const electivesToSave = [];
+      if (modalDisciplineElective) electivesToSave.push(modalDisciplineElective);
+      if (modalFreeElective) electivesToSave.push(modalFreeElective);
+
+      await api.updateStudentElectives(electivesToSave);
+      const refreshed = await api.getMe();
+      if (refreshed?.user) setUser(refreshed.user);
+      setIsElectiveModalOpen(false);
+
+      const parts = [];
+      if (modalDisciplineElective) parts.push(`EL-1: ${modalDisciplineElective}`);
+      if (modalFreeElective) parts.push(`Free: ${modalFreeElective}`);
+      toast.success(parts.length > 0 ? `Enrolled in ${parts.join(' & ')}!` : "Electives set to Core Only.");
+      
+      const eligibleRes = await api.getEligibleTeachers(studentBatch, studentBranch, electivesToSave).catch(() => ({ teachers: [] }));
+      setEligibleTeachers(eligibleRes.teachers || []);
+    } catch (err) {
+      toast.error(err.message || "Failed to update electives");
+    } finally {
+      setSavingElective(false);
+    }
+  };
+
   const fetchDashboardData = async (isInitial = false) => {
     // Only show full loading spinner if we don't have teachers cached yet
     if (isInitial && allTeachers.length === 0) {
       setLoading(true);
     }
     try {
-      // 1. Fetch eligible teachers
-      const eligibleRes = await api.getEligibleTeachers(studentBatch, studentBranch).catch(() => ({ teachers: [] }));
+      // 1. Fetch eligible teachers passing studentElectives
+      const eligibleRes = await api.getEligibleTeachers(studentBatch, studentBranch, studentElectives).catch(() => ({ teachers: [] }));
       setEligibleTeachers(eligibleRes.teachers || []);
 
       // 2. Fetch all teachers and ratings summary in parallel
@@ -429,7 +478,7 @@ export const StudentDashboard = () => {
               </span>
             </div>
             <div style={{ fontSize: '14px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span>Batch <strong>{studentBatch}</strong> • Branch <strong>{studentBranch}</strong> • Year <strong>{user?.studentProfile?.yearOfStudy || 1}</strong></span>
+              <span>Batch <strong>{studentBatch}</strong> • Branch <strong>{studentBranch}</strong> • Year <strong>{studentYear}</strong></span>
               <button
                 onClick={openBatchChange}
                 className="btn btn-secondary btn-sm"
@@ -438,6 +487,36 @@ export const StudentDashboard = () => {
               >
                 Request Batch Change
               </button>
+
+              <span style={{ color: 'var(--border-light)' }}>•</span>
+
+              {studentYear >= 3 ? (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '13px' }}>
+                    EL-1: <strong style={{ color: currentDisciplineElective ? 'var(--primary)' : 'var(--text-secondary)' }}>{currentDisciplineElective ? `${currentDisciplineElective}` : 'None'}</strong>
+                  </span>
+                  <span style={{ color: 'var(--border-light)' }}>•</span>
+                  <span style={{ fontSize: '13px' }}>
+                    Free: <strong style={{ color: currentFreeElective ? '#10b981' : 'var(--text-secondary)' }}>{currentFreeElective ? `${currentFreeElective}` : 'None'}</strong>
+                  </span>
+                  <button
+                    onClick={() => {
+                      setModalDisciplineElective(currentDisciplineElective);
+                      setModalFreeElective(currentFreeElective);
+                      setIsElectiveModalOpen(true);
+                    }}
+                    className="btn btn-secondary btn-sm"
+                    style={{ padding: '2px 8px', fontSize: '11.5px', height: '24px' }}
+                    title="Select or change your Discipline and Free electives"
+                  >
+                    Change Electives
+                  </button>
+                </div>
+              ) : (
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }} title="1st & 2nd Year have fixed core subjects with no electives">
+                  Electives: <em>None (Core Only)</em>
+                </span>
+              )}
             </div>
           </div>
 
@@ -648,9 +727,41 @@ export const StudentDashboard = () => {
                 <Edit3 size={14} /> Change Batch
               </button>
             </div>
-            <div style={{ background: 'var(--bg-card-subtle)', padding: '12px 16px', borderRadius: '10px', fontSize: '13px', display: 'flex', justifyContent: 'space-between' }}>
+            <div style={{ background: 'var(--bg-card-subtle)', padding: '12px 16px', borderRadius: '10px', fontSize: '13px', display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
               <span style={{ color: 'var(--text-muted)' }}>Current Sub-Section:</span>
               <strong style={{ color: 'var(--text-primary)' }}>{studentBatch} ({studentBranch})</strong>
+            </div>
+
+            <div style={{ background: 'var(--bg-card-subtle)', padding: '12px 16px', borderRadius: '10px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <span style={{ color: 'var(--text-muted)' }}>Discipline Elective (EL-1): </span>
+                  <strong style={{ color: currentDisciplineElective ? 'var(--primary)' : 'var(--text-primary)' }}>
+                    {currentDisciplineElective ? `${currentDisciplineElective} - ${getElectiveName(currentDisciplineElective)}` : (studentYear >= 3 ? 'None (Core Only)' : 'None (1st & 2nd Year Core)')}
+                  </strong>
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <span style={{ color: 'var(--text-muted)' }}>Free Elective (Open): </span>
+                  <strong style={{ color: currentFreeElective ? '#10b981' : 'var(--text-primary)' }}>
+                    {currentFreeElective ? `${currentFreeElective} - ${getElectiveName(currentFreeElective)}` : (studentYear >= 3 ? 'None (Core Only)' : 'None (1st & 2nd Year Core)')}
+                  </strong>
+                </div>
+                {studentYear >= 3 && (
+                  <button
+                    onClick={() => {
+                      setModalDisciplineElective(currentDisciplineElective);
+                      setModalFreeElective(currentFreeElective);
+                      setIsElectiveModalOpen(true);
+                    }}
+                    className="btn btn-secondary btn-sm"
+                    style={{ padding: '2px 8px', fontSize: '11px', height: '22px' }}
+                  >
+                    <Edit3 size={12} /> Change Electives
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -755,8 +866,12 @@ export const StudentDashboard = () => {
                           courseCode: code,
                           courseName: (c.courseName || '').trim(),
                           ltpSet: new Set(),
-                          batches: new Set()
+                          batches: new Set(),
+                          isElective: Boolean(c.isElective)
                         };
+                      }
+                      if (c.isElective) {
+                        courseMap[code].isElective = true;
                       }
                       if (c.courseName && (!courseMap[code].courseName || courseMap[code].courseName.length < c.courseName.trim().length)) {
                         courseMap[code].courseName = c.courseName.trim();
@@ -835,6 +950,19 @@ export const StudentDashboard = () => {
                                 <span style={{ color: 'var(--text-secondary)' }}>· {courseTitle}</span>
                               )}
                               <span style={{ color: 'var(--text-muted)' }}>· {ltpStr}</span>
+                              {c.isElective && (
+                                <span style={{
+                                  fontSize: '10px',
+                                  fontWeight: 700,
+                                  padding: '1px 5px',
+                                  borderRadius: '4px',
+                                  background: isFreeElective(c.courseCode) ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                                  color: isFreeElective(c.courseCode) ? '#10b981' : '#3b82f6',
+                                  border: `1px solid ${isFreeElective(c.courseCode) ? 'rgba(16, 185, 129, 0.25)' : 'rgba(59, 130, 246, 0.25)'}`
+                                }}>
+                                  {isFreeElective(c.courseCode) ? 'Free Elective' : 'Elective [EL-1]'}
+                                </span>
+                              )}
                               {batchStr && (
                                 <span style={{ opacity: 0.8, color: 'var(--text-muted)' }}>
                                   ({batchStr})
@@ -1531,6 +1659,100 @@ export const StudentDashboard = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Change Elective Course Modal */}
+      {isElectiveModalOpen && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9999,
+          background: 'rgba(0,0,0,0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px'
+        }} onClick={() => setIsElectiveModalOpen(false)}>
+          <div className="card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px', width: '100%', padding: '24px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <BookOpen size={20} style={{ color: 'var(--primary)' }} />
+                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>
+                  Select Your Semester Electives
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsElectiveModalOpen(false)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '18px', color: 'var(--text-muted)' }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: '1.4' }}>
+              Select the electives you are enrolled in according to your Thapar Webkiosk portal. Faculty teaching your chosen electives (along with your core batch faculty) will appear in your review list. You can set either to <strong>None</strong>.
+            </p>
+
+            {/* Discipline Elective [EL-1] */}
+            <div className="form-group" style={{ marginBottom: '14px' }}>
+              <label className="form-label" style={{ fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                Discipline Elective [EL-1]
+              </label>
+              <select
+                className="form-select"
+                value={modalDisciplineElective}
+                onChange={(e) => setModalDisciplineElective(e.target.value)}
+              >
+                <option value="">None / Not Allocated (Core Only)</option>
+                {OFFICIAL_ELECTIVES.disciplineElectives.map(el => (
+                  <option key={el.code} value={el.code}>
+                    {el.code} - {el.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Free Elective */}
+            <div className="form-group" style={{ marginBottom: '18px' }}>
+              <label className="form-label" style={{ fontSize: '12px', fontWeight: 700, marginBottom: '4px' }}>
+                Free Elective (Open Elective)
+              </label>
+              <select
+                className="form-select"
+                value={modalFreeElective}
+                onChange={(e) => setModalFreeElective(e.target.value)}
+              >
+                <option value="">None / Not Allocated (Core Only)</option>
+                {OFFICIAL_ELECTIVES.freeElectives.map(el => (
+                  <option key={el.code} value={el.code}>
+                    {el.code} - {el.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                disabled={savingElective}
+                onClick={() => setIsElectiveModalOpen(false)}
+                className="btn btn-secondary btn-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={savingElective}
+                onClick={handleSaveElective}
+                className="btn btn-primary btn-sm"
+              >
+                {savingElective ? 'Saving...' : 'Save Electives'}
+              </button>
+            </div>
           </div>
         </div>
       )}

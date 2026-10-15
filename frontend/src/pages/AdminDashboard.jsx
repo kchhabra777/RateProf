@@ -207,9 +207,8 @@ export const AdminDashboard = () => {
   const [regLoading, setRegLoading] = useState(false);
   const [regMessage, setRegMessage] = useState(null);
 
-  // Delete Confirmation Modal
-  const [teacherToDelete, setTeacherToDelete] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  // Delete Teacher State
+  const [isDeletingTeacher, setIsDeletingTeacher] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -599,18 +598,48 @@ export const AdminDashboard = () => {
     }
   };
 
-  const confirmDeleteTeacher = async () => {
-    if (!teacherToDelete) return;
-    setIsDeleting(true);
+  const handleDeleteTeacher = async (teacher, e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (!teacher) return;
+    const name = teacher.fullName || teacher.name || 'this faculty member';
+    if (!window.confirm(`Are you sure you want to permanently delete ${name} and all their reviews, ratings, and course allocations?\n\nThis action cannot be undone.`)) {
+      return;
+    }
+
+    const teacherId = teacher.userId || teacher.user?.id || teacher.id;
+    const targetId = teacher.id;
+    setIsDeletingTeacher(true);
+
+    // Optimistic UI update: instantly remove from list so user sees immediate feedback
+    const previousTeachers = [...teachers];
+    setTeachers(prev => prev.filter(t => {
+      const tUserId = t.userId || t.user?.id;
+      const tId = t.id;
+      if (teacherId && (tUserId === teacherId || tId === teacherId)) return false;
+      if (targetId && tId === targetId) return false;
+      return true;
+    }));
+
+    if (selectedTeacher) {
+      const sId = selectedTeacher.userId || selectedTeacher.user?.id || selectedTeacher.id;
+      if (sId === teacherId || selectedTeacher.id === targetId) {
+        setSelectedTeacher(null);
+        setTeacherReviews([]);
+      }
+    }
+
     try {
-      const teacherId = teacherToDelete.userId || teacherToDelete.user?.id || teacherToDelete.id;
       await api.deleteTeacher(teacherId);
-      setTeachers(prev => prev.filter(t => (t.userId || t.user?.id || t.id) !== teacherId && t.id !== teacherToDelete.id));
-      setTeacherToDelete(null);
+      // Reload stats and leaderboard silently to keep totals accurate
+      loadData();
     } catch (err) {
+      setTeachers(previousTeachers);
       alert(err.message || "Failed to delete teacher");
     } finally {
-      setIsDeleting(false);
+      setIsDeletingTeacher(false);
     }
   };
 
@@ -1250,7 +1279,13 @@ export const AdminDashboard = () => {
                         {r.totalReviews === 0 ? '—' : `${r.totalReviews} reviews`}
                       </div>
                       <div>
-                        <button className="btn btn-subtle btn-sm" style={{ color: '#ef4444', padding: '6px 10px' }} onClick={(e) => { e.stopPropagation(); setTeacherToDelete(teacher); }} title="Remove Teacher">
+                        <button 
+                          type="button"
+                          className="btn btn-subtle btn-sm" 
+                          style={{ color: '#ef4444', padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
+                          onClick={(e) => handleDeleteTeacher(teacher, e)} 
+                          title="Remove Teacher"
+                        >
                           <Trash2 size={15} />
                         </button>
                       </div>
@@ -1325,6 +1360,16 @@ export const AdminDashboard = () => {
                     Generate Feedback Analytics
                   </button>
                   <button onClick={exportCsv} className="btn btn-secondary btn-sm" style={{ display: 'flex', gap: '6px' }}><Download size={14} /> Export CSV</button>
+                  <button 
+                    type="button"
+                    onClick={(e) => handleDeleteTeacher(selectedTeacher, e)} 
+                    className="btn btn-secondary btn-sm" 
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444' }}
+                    title="Remove this faculty member"
+                    disabled={isDeletingTeacher}
+                  >
+                    <Trash2 size={14} /> {isDeletingTeacher ? 'Removing...' : 'Remove Faculty'}
+                  </button>
                 </div>
               </div>
 
@@ -2311,37 +2356,7 @@ export const AdminDashboard = () => {
       </main>
 
 
-      {/* ── Custom Delete Confirmation Modal ── */}
-      {teacherToDelete && (
-        <div className="modal-backdrop" onClick={() => setTeacherToDelete(null)}>
-          <div className="modal-content fade-in" style={{ maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', color: '#ef4444' }}>
-              <AlertTriangle size={24} />
-              <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>Remove Faculty</h3>
-            </div>
-            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: 1.5 }}>
-              Are you sure you want to completely remove <strong>{teacherToDelete.fullName}</strong> and all their data? This action cannot be undone.
-            </p>
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button 
-                className="btn btn-secondary" 
-                onClick={() => setTeacherToDelete(null)}
-                disabled={isDeleting}
-              >
-                Cancel
-              </button>
-              <button 
-                className="btn btn-primary" 
-                style={{ backgroundColor: '#ef4444', borderColor: '#ef4444' }}
-                onClick={confirmDeleteTeacher}
-                disabled={isDeleting}
-              >
-                {isDeleting ? 'Removing...' : 'Yes, Remove Faculty'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
     
       {isAIInsightsOpen && selectedTeacher && (
         <TeacherAIInsights 

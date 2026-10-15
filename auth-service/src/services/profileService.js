@@ -6,10 +6,11 @@ export const saveStudentProfile = async ({
   rollNumber,
   branch,
   batch,
-  yearOfStudy
+  yearOfStudy,
+  selectedElectives = []
 }) => {
-  if (!rollNumber || !/^\d{10}$/.test(rollNumber.trim())) {
-    throw new Error("Roll Number must be exactly 10 digits (e.g. 1024031234).");
+  if (!rollNumber || !/^\d{9,10}$/.test(rollNumber.trim())) {
+    throw new Error("Roll Number must be 9 or 10 digits (e.g. 1024031234 or 102103123).");
   }
 
   if (!branch || branch.trim() === "") {
@@ -46,6 +47,10 @@ export const saveStudentProfile = async ({
     throw new Error("Batch cannot be changed directly after profile setup. Please submit a Batch Change Request to be verified by your CR and approved by an Admin.");
   }
 
+  const cleanElectives = Array.isArray(selectedElectives)
+    ? selectedElectives.map(e => String(e).trim().toUpperCase()).filter(e => e && e !== "NONE" && e !== "NULL")
+    : [];
+
   const profile = await prisma.studentProfile.upsert({
     where: { userId },
     update: {
@@ -53,7 +58,8 @@ export const saveStudentProfile = async ({
       rollNumber: rollNumber.trim(),
       branch: branch.trim().toUpperCase(),
       batch: batch.trim().toUpperCase(),
-      yearOfStudy: numYear
+      yearOfStudy: numYear,
+      ...(selectedElectives !== undefined ? { selectedElectives: cleanElectives } : {})
     },
     create: {
       userId,
@@ -61,13 +67,27 @@ export const saveStudentProfile = async ({
       rollNumber: rollNumber.trim(),
       branch: branch.trim().toUpperCase(),
       batch: batch.trim().toUpperCase(),
-      yearOfStudy: numYear
+      yearOfStudy: numYear,
+      selectedElectives: cleanElectives
     }
   });
 
   await prisma.user.update({
     where: { id: userId },
     data: { isProfileComplete: true }
+  });
+
+  return profile;
+};
+
+export const updateStudentElectives = async ({ userId, selectedElectives }) => {
+  const cleanElectives = Array.isArray(selectedElectives)
+    ? selectedElectives.map(e => String(e).trim().toUpperCase()).filter(e => e && e !== "NONE" && e !== "NULL")
+    : [];
+
+  const profile = await prisma.studentProfile.update({
+    where: { userId },
+    data: { selectedElectives: cleanElectives }
   });
 
   return profile;

@@ -1,5 +1,6 @@
 import {
   saveStudentProfile,
+  updateStudentElectives,
   saveTeacherProfile,
   getAllTeachers,
   getTeacherById
@@ -7,7 +8,7 @@ import {
 
 export const onboardStudent = async (req, res) => {
   try {
-    const { fullName, rollNumber, branch, batch, yearOfStudy } = req.body;
+    const { fullName, rollNumber, branch, batch, yearOfStudy, selectedElectives } = req.body;
 
     const profile = await saveStudentProfile({
       userId: req.user.id,
@@ -15,12 +16,31 @@ export const onboardStudent = async (req, res) => {
       rollNumber,
       branch,
       batch: batch || req.user.detectedBatch,
-      yearOfStudy
+      yearOfStudy,
+      selectedElectives: selectedElectives || []
     });
 
     return res.status(200).json({
       success: true,
       message: "Student profile saved successfully",
+      profile
+    });
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+};
+
+export const updateElectives = async (req, res) => {
+  try {
+    const { selectedElectives } = req.body;
+    const profile = await updateStudentElectives({
+      userId: req.user.id,
+      selectedElectives
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Elective courses updated successfully",
       profile
     });
   } catch (error) {
@@ -318,8 +338,16 @@ export const getCRBatchRequests = async (req, res) => {
   }
 };
 
+let leaderboardCache = null;
+let leaderboardCacheTime = 0;
+const LEADERBOARD_CACHE_TTL = 30 * 1000; // 30 seconds
+
 export const getStudentLeaderboard = async (req, res) => {
   try {
+    if (leaderboardCache && Date.now() - leaderboardCacheTime < LEADERBOARD_CACHE_TTL) {
+      return res.status(200).json({ leaderboard: leaderboardCache });
+    }
+
     const topStudents = await prisma.studentProfile.findMany({
       where: {
         xp: { gt: 0 }
@@ -336,6 +364,10 @@ export const getStudentLeaderboard = async (req, res) => {
         isCR: true
       }
     });
+
+    leaderboardCache = topStudents;
+    leaderboardCacheTime = Date.now();
+
     return res.status(200).json({ leaderboard: topStudents });
   } catch (error) {
     console.error("Failed to fetch student leaderboard:", error);

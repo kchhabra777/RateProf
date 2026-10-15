@@ -18,6 +18,7 @@ app.set("trust proxy", 1);
 // Allowed origins
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:5174",
   "http://localhost:3000",
   "https://www.rateprof.tech",
   "https://rateprof.tech"
@@ -35,49 +36,62 @@ app.use(cors({
   credentials: true
 }));
 
-// ── Rate Limiters ──
-// 1. General API limiter (protects against general DDoS)
+// Strip client spoofed headers and verify valid token first so limiters know the user identity
+app.use(clerkAuthMiddleware);
+
+// ── Rate Limiters (Campus NAT & User Aware) ──
+// 1. General API limiter (protects against DDoS while accommodating 1000s on campus Wi-Fi)
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000,
+  max: 10000, // High threshold for campus-wide NAT egress IP
+  keyGenerator: (req) => req.headers["x-user-id"] || req.ip,
+  validate: { keyGeneratorIpFallback: false },
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Too many requests from this IP, please try again after 15 minutes." }
+  message: { error: "Too many requests. Please slow down and try again shortly." }
 });
 
-// 2. Sensitive OTP send limiter (prevents Brevo quota burning and SMS/email spam)
+// 2. Sensitive OTP send limiter (keyed per authenticated student or IP)
 const otpSendLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 6,
+  max: 15,
+  keyGenerator: (req) => req.headers["x-user-id"] || req.ip,
+  validate: { keyGeneratorIpFallback: false },
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Too many verification code requests. Please wait 15 minutes before requesting again." }
+  message: { error: "Too many verification code requests. Please wait a few minutes before requesting again." }
 });
 
 // 3. Sensitive Login attempt limiter (prevents brute-force)
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 60,
+  keyGenerator: (req) => req.headers["x-user-id"] || req.ip,
+  validate: { keyGeneratorIpFallback: false },
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many login attempts. Please try again after 15 minutes." }
 });
 
-// 4. Review creation limiter (prevents review spamming)
+// 4. Review creation limiter (per authenticated student)
 const reviewSubmissionLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
-  max: 10,
+  max: 15,
+  keyGenerator: (req) => req.headers["x-user-id"] || req.ip,
+  validate: { keyGeneratorIpFallback: false },
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "You are submitting reviews too rapidly. Please slow down." }
 });
 
 app.use(generalLimiter);
-app.use(["/api/auth/forgot-password/send-otp", "/auth/forgot-password/send-otp"], otpSendLimiter);
+app.use([
+  "/api/auth/forgot-password/send-otp",
+  "/auth/forgot-password/send-otp",
+  "/api/auth/change-password/send-otp",
+  "/auth/change-password/send-otp"
+], otpSendLimiter);
 app.use(["/api/auth/login", "/auth/login"], loginLimiter);
-
-// Strip client spoofed headers and verify valid token
-app.use(clerkAuthMiddleware);
 
 const proxyOptions = (target) => ({
   target,

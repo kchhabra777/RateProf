@@ -7,6 +7,18 @@ export const createFlag = async ({
 }) => {
     const numReviewId = Number(reviewId);
 
+    // Prevent duplicate flagging by the same user
+    const existingFlag = await prisma.reviewFlag.findFirst({
+        where: {
+            reviewId: numReviewId,
+            reporterId
+        }
+    });
+
+    if (existingFlag) {
+        throw new Error("You have already reported this review.");
+    }
+
     const flag = await prisma.reviewFlag.create({
         data: {
             reviewId: numReviewId,
@@ -15,13 +27,22 @@ export const createFlag = async ({
         }
     });
 
-    // Mark isFlagged on the review
-    try {
-        await prisma.review.update({
-            where: { reviewId: numReviewId },
-            data: { isFlagged: true }
-        });
-    } catch (e) {}
+    // Auto-quarantine safety threshold: only hide if flagged by >= 3 unique users
+    const pendingFlagsCount = await prisma.reviewFlag.count({
+        where: {
+            reviewId: numReviewId,
+            status: "PENDING"
+        }
+    });
+
+    if (pendingFlagsCount >= 3) {
+        try {
+            await prisma.review.update({
+                where: { reviewId: numReviewId },
+                data: { isFlagged: true }
+            });
+        } catch (e) {}
+    }
 
     return flag;
 };

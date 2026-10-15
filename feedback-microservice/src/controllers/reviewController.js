@@ -345,31 +345,52 @@ export const getTeacherTagStats = async (req, res) => {
 
 import { generateTeacherSummaries } from "../services/aiService.js";
 
-// Basic in-memory cache to save API calls
+// In-memory cache with TTL and promise deduplication to collapse thundering-herd requests
 const aiSummaryCache = new Map();
+const inFlightSummaries = new Map();
+const AI_SUMMARY_TTL = 60 * 60 * 1000; // 1 hour TTL
 
 export const getTeacherAISummary = async (req, res) => {
     try {
         const { teacherId } = req.params;
         const cacheKey = `ai-summary-${teacherId}`;
 
-        if (aiSummaryCache.has(cacheKey)) {
-            return res.json({ summary: aiSummaryCache.get(cacheKey) });
+        const cached = aiSummaryCache.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < AI_SUMMARY_TTL) {
+            return res.json({ summary: cached.data });
         }
 
-        const reviews = await prisma.review.findMany({
-            where: { revieweeId: teacherId },
-            select: { reviewText: true },
-        });
+        // Collapse concurrent requests for the same teacher into a single promise
+        let promise = inFlightSummaries.get(cacheKey);
+        if (!promise) {
+            promise = (async () => {
+                const reviews = await prisma.review.findMany({
+                    where: { revieweeId: teacherId, isFlagged: false },
+                    select: { reviewText: true },
+                    take: 50 // Cap to latest 50 reviews for LLM prompt context
+                });
 
-        if (!reviews || reviews.length === 0) {
+                if (!reviews || reviews.length === 0) {
+                    return null;
+                }
+
+                const summary = await generateTeacherSummaries(reviews);
+                aiSummaryCache.set(cacheKey, { data: summary, timestamp: Date.now() });
+                return summary;
+            })();
+            inFlightSummaries.set(cacheKey, promise);
+        }
+
+        let summary;
+        try {
+            summary = await promise;
+        } finally {
+            inFlightSummaries.delete(cacheKey);
+        }
+
+        if (!summary) {
             return res.status(404).json({ error: "No reviews found for this teacher" });
         }
-
-        const summary = await generateTeacherSummaries(reviews);
-        
-        // Cache the result to avoid repeating LLM calls
-        aiSummaryCache.set(cacheKey, summary);
 
         res.json({ summary });
     } catch (e) {

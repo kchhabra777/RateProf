@@ -132,6 +132,7 @@ export const ALLOWED_BRANCHES = [
 ];
 
 export { ALLOWED_BATCHES } from "./batches.js";
+export { OFFICIAL_ELECTIVES, getElectiveName, isFreeElective } from "./electives.js";
 
 export const ALLOWED_ACADEMIC_YEARS = [
   "2026-2027 ODD",
@@ -195,13 +196,29 @@ export const api = {
   getAllTeachers: () => request("/profiles/teachers"),
   getTeacherProfile: (teacherId) => request(`/profiles/teachers/${teacherId}`),
 
+  updateStudentElectives: (selectedElectives) => request("/profiles/student/electives", {
+    method: "PUT",
+    body: JSON.stringify({ selectedElectives })
+  }),
+
   // Courses & Offerings CRUD
-  getEligibleTeachers: (batch, branch) => {
+  getEligibleTeachers: (batch, branch, electives) => {
     const params = new URLSearchParams();
     if (batch) params.append("batch", batch);
     if (branch) params.append("branch", branch);
+    if (electives) {
+      const elList = Array.isArray(electives) ? electives.filter(Boolean).join(",") : electives;
+      if (elList) params.append("electives", elList);
+    }
     const query = params.toString();
     return request(`/courses/eligible-teachers${query ? `?${query}` : ""}`);
+  },
+  getElectives: (branch, year) => {
+    const params = new URLSearchParams();
+    if (branch) params.append("branch", branch);
+    if (year) params.append("year", year);
+    const query = params.toString();
+    return request(`/courses/electives${query ? `?${query}` : ""}`);
   },
   getMyOfferings: () => request("/courses/my-offerings"),
   addCourseOffering: (data) => request("/courses/offerings", {

@@ -37,8 +37,8 @@ export const flagReview = async (req, res) => {
       flag
     });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: "Failed to report review" });
+    console.error("Flag review error:", error.message);
+    return res.status(400).json({ error: error.message || "Failed to report review" });
   }
 };
 

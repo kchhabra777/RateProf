@@ -38,7 +38,7 @@ export const clerkAuthMiddleware = async (req, res, next) => {
     if (verified && verified.sub) {
       req.headers["x-user-id"] = verified.sub;
 
-      let email = verified.email;
+      let email = verified.email || verified.email_address || verified.primary_email_address || verified.claims?.email || verified.claims?.email_address;
       if (!email && userCache.has(verified.sub)) {
         email = userCache.get(verified.sub);
       }

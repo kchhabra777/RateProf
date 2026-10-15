@@ -1,4 +1,4 @@
-﻿# Dependencies
+# Dependencies
 node_modules/
 */node_modules/
 
@@ -33,3 +33,11 @@ yarn-debug.log*
 yarn-error.log*
 
 node_modules/
+
+# Media & Animation scratch builds
+opus-demo/
+opus-rateprof/
+rateprof-reel/
+rateprof-remotion/
+auth-service/dry_run_teachers.js
+auth-service/test_db.js
