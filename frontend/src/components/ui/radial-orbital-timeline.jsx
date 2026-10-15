@@ -348,7 +348,8 @@ export default function RadialOrbitalTimeline({
                     {item.content}
                   </p>
 
-                  {/* Strength Bar */}
+                  {/* Strength Bar (only when a real score is supplied) */}
+                  {typeof item.energy === 'number' && (
                   <div style={{ borderTop: `${1 * invScale}px solid rgba(255, 255, 255, 0.08)`, paddingTop: `${14 * invScale}px` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: `${12 * invScale}px`, marginBottom: `${6 * invScale}px` }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: `${6 * invScale}px`, color: '#94a3b8' }}>
@@ -369,6 +370,7 @@ export default function RadialOrbitalTimeline({
                       />
                     </div>
                   </div>
+                  )}
                 </div>
               )}
             </div>

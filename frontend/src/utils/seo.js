@@ -73,8 +73,9 @@ export function updatePageSEO({
 export function buildTeacherSchema(teacher, ratings = null) {
   if (!teacher) return null;
 
-  const ratingVal = ratings?.overallRating ? Number(ratings.overallRating).toFixed(1) : '5.0';
-  const count = ratings?.totalReviews ? Number(ratings.totalReviews) : 1;
+  // Only publish an aggregate rating backed by real reviews
+  const count = ratings?.totalReviews ? Number(ratings.totalReviews) : 0;
+  const ratingVal = count > 0 && ratings?.overallRating ? Number(ratings.overallRating).toFixed(1) : null;
 
   return {
     '@context': 'https://schema.org',
@@ -88,7 +89,7 @@ export function buildTeacherSchema(teacher, ratings = null) {
     },
     department: teacher.department || 'Engineering',
     url: `https://www.rateprof.tech/teacher/${encodeURIComponent(teacher.id || teacher.userId || '')}`,
-    ...(count > 0 ? {
+    ...(ratingVal ? {
       aggregateRating: {
         '@type': 'AggregateRating',
         ratingValue: ratingVal,

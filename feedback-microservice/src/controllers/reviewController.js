@@ -4,6 +4,7 @@ import {
     getReviewsByReviewee,
     getReviewById
 } from "../services/reviewService.js";
+import { verifyStudentTeacherEligibility } from "../lib/eligibility.js";
 
 export const createReview = async (req, res) => {
     try {
@@ -45,6 +46,20 @@ export const createReview = async (req, res) => {
             });
         }
 
+        // Same batch/branch/elective rule the frontend checks via /courses/check-eligibility,
+        // enforced here so it cannot be skipped by calling the API directly
+        const eligibility = await verifyStudentTeacherEligibility({
+            studentProfile,
+            teacherUserId: reviewee.userId,
+            courseCode
+        });
+        if (!eligibility.eligible) {
+            return res.status(403).json({
+                error: eligibility.reason || "You are not eligible to review this teacher."
+            });
+        }
+        const matchedCourse = courseCode ? eligibility.matchingCourse : null;
+
         const review = await createReviewService({
             reviewerId: reviewerUser.id,
             reviewerName: studentProfile?.fullName || reviewerUser.email.split("@")[0],
@@ -53,8 +68,8 @@ export const createReview = async (req, res) => {
             reviewerBatch: studentProfile?.batch || reviewerUser.detectedBatch || null,
             reviewerBranch: studentProfile?.branch || null,
             revieweeId: reviewee.userId,
-            courseCode: courseCode || null,
-            courseName: courseName || null,
+            courseCode: matchedCourse?.courseCode || courseCode || null,
+            courseName: matchedCourse?.courseName || courseName || null,
             rating: numRating,
             reviewText: reviewText.trim(),
             context: context || null,
@@ -267,15 +282,18 @@ import { generateTeacherSummaries } from "../services/aiService.js";
 const aiSummaryCache = new Map();
 const inFlightSummaries = new Map();
 const AI_SUMMARY_TTL = 60 * 60 * 1000; // 1 hour TTL
+const AI_SUMMARY_FAILURE_TTL = 2 * 60 * 1000; // retry an unavailable summary after 2 minutes
 
+// Responses always carry a status so the client can tell "no reviews yet" from "AI unavailable":
+//   { status: "ok", summary } | { status: "no_reviews", summary: null } | { status: "unavailable", summary: null }
 export const getTeacherAISummary = async (req, res) => {
     try {
         const { teacherId } = req.params;
         const cacheKey = `ai-summary-${teacherId}`;
 
         const cached = aiSummaryCache.get(cacheKey);
-        if (cached && Date.now() - cached.timestamp < AI_SUMMARY_TTL) {
-            return res.json({ summary: cached.data });
+        if (cached && Date.now() - cached.timestamp < cached.ttl) {
+            return res.json(cached.data);
         }
 
         // Collapse concurrent requests for the same teacher into a single promise
@@ -285,34 +303,39 @@ export const getTeacherAISummary = async (req, res) => {
                 const reviews = await prisma.review.findMany({
                     where: { revieweeId: teacherId, isFlagged: false },
                     select: { reviewText: true },
+                    orderBy: { createdAt: "desc" },
                     take: 50 // Cap to latest 50 reviews for LLM prompt context
                 });
 
                 if (!reviews || reviews.length === 0) {
-                    return null;
+                    return { status: "no_reviews", summary: null };
                 }
 
                 const summary = await generateTeacherSummaries(reviews);
-                aiSummaryCache.set(cacheKey, { data: summary, timestamp: Date.now() });
-                return summary;
+                const result = summary
+                    ? { status: "ok", summary }
+                    : { status: "unavailable", summary: null };
+                // Failures are cached briefly so a Gemini outage does not trigger a call per page view
+                aiSummaryCache.set(cacheKey, {
+                    data: result,
+                    timestamp: Date.now(),
+                    ttl: summary ? AI_SUMMARY_TTL : AI_SUMMARY_FAILURE_TTL
+                });
+                return result;
             })();
             inFlightSummaries.set(cacheKey, promise);
         }
 
-        let summary;
+        let result;
         try {
-            summary = await promise;
+            result = await promise;
         } finally {
             inFlightSummaries.delete(cacheKey);
         }
 
-        if (!summary) {
-            return res.status(404).json({ error: "No reviews found for this teacher" });
-        }
-
-        res.json({ summary });
+        res.json(result);
     } catch (e) {
         console.error("Failed to generate AI summary:", e);
-        res.status(500).json({ error: e.message || "Failed to generate AI insights" });
+        res.status(500).json({ status: "unavailable", summary: null, error: "Failed to generate AI insights" });
     }
 };

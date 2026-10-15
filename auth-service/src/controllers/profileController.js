@@ -3,7 +3,8 @@ import {
   updateStudentElectives,
   saveTeacherProfile,
   getAllTeachers,
-  getTeacherById
+  getTeacherById,
+  getTeacherBySlug
 } from "../services/profileService.js";
 
 export const onboardStudent = async (req, res) => {
@@ -100,7 +101,7 @@ export const listTeachers = async (req, res) => {
 export const getTeacherProfile = async (req, res) => {
   try {
     const { id } = req.params;
-    const teacher = await getTeacherById(id);
+    const teacher = (await getTeacherById(id)) || (await getTeacherBySlug(id));
     if (!teacher) {
       return res.status(404).json({ error: "Teacher not found" });
     }
@@ -338,37 +339,63 @@ export const getCRBatchRequests = async (req, res) => {
   }
 };
 
+// The leaderboard must not reveal who a student is: XP rises when a student posts a review, so
+// names or roll numbers next to XP would let anyone match a new "anonymous" review to its author.
+// Entries carry initials and branch only, and the list is rebuilt at most every 15 minutes so
+// individual XP jumps blur together.
 let leaderboardCache = null;
 let leaderboardCacheTime = 0;
-const LEADERBOARD_CACHE_TTL = 30 * 1000; // 30 seconds
+const LEADERBOARD_CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+
+const toInitials = (fullName) => {
+  const parts = (fullName || "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "Student";
+  const letters = parts.length === 1 ? [parts[0]] : [parts[0], parts[parts.length - 1]];
+  return letters.map((p) => `${p[0].toUpperCase()}.`).join(" ");
+};
+
+const effectiveBranch = (batch, branch) => {
+  const b = (batch || "").toUpperCase();
+  if (b.includes("Q")) return "COPC";
+  if (b.includes("C") && !b.includes("COPC")) return "COE";
+  return branch || null;
+};
 
 export const getStudentLeaderboard = async (req, res) => {
   try {
-    if (leaderboardCache && Date.now() - leaderboardCacheTime < LEADERBOARD_CACHE_TTL) {
-      return res.status(200).json({ leaderboard: leaderboardCache });
+    if (!leaderboardCache || Date.now() - leaderboardCacheTime >= LEADERBOARD_CACHE_TTL) {
+      const topStudents = await prisma.studentProfile.findMany({
+        where: {
+          xp: { gt: 0 }
+        },
+        orderBy: { xp: "desc" },
+        take: 50,
+        select: {
+          userId: true,
+          fullName: true,
+          batch: true,
+          branch: true,
+          xp: true
+        }
+      });
+
+      leaderboardCache = topStudents.map((s, idx) => ({
+        userId: s.userId,
+        rank: idx + 1,
+        initials: toInitials(s.fullName),
+        branch: effectiveBranch(s.batch, s.branch),
+        xp: s.xp
+      }));
+      leaderboardCacheTime = Date.now();
     }
 
-    const topStudents = await prisma.studentProfile.findMany({
-      where: {
-        xp: { gt: 0 }
-      },
-      orderBy: { xp: "desc" },
-      take: 50,
-      select: {
-        id: true,
-        fullName: true,
-        rollNumber: true,
-        batch: true,
-        branch: true,
-        xp: true,
-        isCR: true
-      }
-    });
+    // userId stays server-side; the caller only learns which row is their own
+    const leaderboard = leaderboardCache.map(({ userId, ...entry }) => ({
+      ...entry,
+      isYou: userId === req.user.id
+    }));
 
-    leaderboardCache = topStudents;
-    leaderboardCacheTime = Date.now();
-
-    return res.status(200).json({ leaderboard: topStudents });
+    return res.status(200).json({ leaderboard });
   } catch (error) {
     console.error("Failed to fetch student leaderboard:", error);
     return res.status(500).json({ error: "Failed to fetch leaderboard" });

@@ -6,8 +6,8 @@ import RadialOrbitalTimeline from './ui/radial-orbital-timeline';
 
 export const TeacherAIInsights = ({ teacherId, teacherName, onClose }) => {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [radarData, setRadarData] = useState([]);
+  // 'ok' | 'no_reviews' | 'unavailable'
+  const [status, setStatus] = useState(null);
   const [insights, setInsights] = useState({});
 
   useEffect(() => {
@@ -15,25 +15,18 @@ export const TeacherAIInsights = ({ teacherId, teacherName, onClose }) => {
       try {
         setLoading(true);
         const data = await api.getTeacherAISummary(teacherId);
-        
-        if (!data || !data.summary) {
-          throw new Error("Invalid response from AI");
+
+        if (data?.status === 'ok' && data.summary) {
+          setInsights(data.summary);
+          setStatus('ok');
+        } else if (data?.status === 'no_reviews') {
+          setStatus('no_reviews');
+        } else {
+          setStatus('unavailable');
         }
-
-        const summary = data.summary;
-
-        setRadarData([
-          { subject: 'Teaching', score: 100 },
-          { subject: 'Grading', score: 90 },
-          { subject: 'Approachability', score: 85 },
-          { subject: 'Workload', score: 70 },
-          { subject: 'Overall', score: 95 }
-        ]);
-
-        setInsights(summary);
       } catch (err) {
         console.error("Failed to load AI Insights", err);
-        setError(err.message || "Failed to generate AI insights.");
+        setStatus('unavailable');
       } finally {
         setLoading(false);
       }
@@ -41,6 +34,25 @@ export const TeacherAIInsights = ({ teacherId, teacherName, onClose }) => {
 
     fetchAISummary();
   }, [teacherId]);
+
+  if (!loading && status !== 'ok') {
+    const noReviews = status === 'no_reviews';
+    return createPortal(
+      <div className="modal-backdrop" onClick={onClose}>
+        <div className="modal-content" style={{ maxWidth: '420px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <h2 className="modal-title">{noReviews ? 'No reviews yet' : 'Summary unavailable'}</h2>
+            <button className="btn btn-subtle" onClick={onClose} style={{ padding: '8px' }}><X size={20} /></button>
+          </div>
+          <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            {noReviews
+              ? `There are no student reviews for ${teacherName} to summarize yet.`
+              : `An AI summary for ${teacherName} can't be generated right now. Read the student reviews directly, or try again in a few minutes.`}
+          </p>
+        </div>
+      </div>
+    , document.body);
+  }
 
   return createPortal(
     <div className="modal-backdrop">
@@ -60,14 +72,6 @@ export const TeacherAIInsights = ({ teacherId, teacherName, onClose }) => {
             <Loader2 className="animate-spin" size={32} color="var(--primary)" style={{ margin: '0 auto 16px auto' }} />
             <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>Analyzing Data...</h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginTop: '8px' }}>Synthesizing student reviews for {teacherName}</p>
-          </div>
-        ) : error ? (
-          <div className="modal-content" style={{ maxWidth: '400px' }}>
-            <div className="modal-header">
-              <h2 className="modal-title" style={{ color: 'var(--error)' }}>Analysis Failed</h2>
-              <button className="btn btn-subtle" onClick={onClose}><X size={20} /></button>
-            </div>
-            <p style={{ margin: 0, fontSize: '13px' }}>{error}</p>
           </div>
         ) : (
           <div style={{ position: 'fixed', inset: 0, backgroundColor: '#030712', zIndex: 9999 }}>
@@ -89,11 +93,11 @@ export const TeacherAIInsights = ({ teacherId, teacherName, onClose }) => {
 
             <RadialOrbitalTimeline 
               timelineData={[
-                { id: 'workload', title: 'Course Workload', icon: Book, glowColor: '#6366f1', category: 'Metric', date: 'AI Generated', content: insights.workload || "No data.", energy: radarData.find(r => r.subject === 'Workload')?.score || 70 },
-                { id: 'overall', title: 'Overall Vibe', icon: Activity, glowColor: '#10b981', category: 'Metric', date: 'AI Generated', content: insights.overall || "No data.", energy: radarData.find(r => r.subject === 'Overall')?.score || 95 },
-                { id: 'teaching', title: 'Teaching Quality', icon: FileText, glowColor: '#ec4899', category: 'Metric', date: 'AI Generated', content: insights.teaching || "No data.", energy: radarData.find(r => r.subject === 'Teaching')?.score || 100 },
-                { id: 'grading', title: 'Grading & Fairness', icon: Scale, glowColor: '#0ea5e9', category: 'Metric', date: 'AI Generated', content: insights.grading || "No data.", energy: radarData.find(r => r.subject === 'Grading')?.score || 90 },
-                { id: 'approachability', title: 'Approachability', icon: Users, glowColor: '#f59e0b', category: 'Metric', date: 'AI Generated', content: insights.approachability || "No data.", energy: radarData.find(r => r.subject === 'Approachability')?.score || 85 }
+                { id: 'workload', title: 'Course Workload', icon: Book, glowColor: '#6366f1', category: 'Metric', date: 'AI summary', content: insights.workload || "No data." },
+                { id: 'overall', title: 'Overall Vibe', icon: Activity, glowColor: '#10b981', category: 'Metric', date: 'AI summary', content: insights.overall || "No data." },
+                { id: 'teaching', title: 'Teaching Quality', icon: FileText, glowColor: '#ec4899', category: 'Metric', date: 'AI summary', content: insights.teaching || "No data." },
+                { id: 'grading', title: 'Grading & Fairness', icon: Scale, glowColor: '#0ea5e9', category: 'Metric', date: 'AI summary', content: insights.grading || "No data." },
+                { id: 'approachability', title: 'Approachability', icon: Users, glowColor: '#f59e0b', category: 'Metric', date: 'AI summary', content: insights.approachability || "No data." }
               ]} 
             />
           </div>

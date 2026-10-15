@@ -6,6 +6,7 @@ import { updatePageSEO, buildTeacherSchema } from '../utils/seo';
 import CloudLoader from '../components/ui/quantum-cloud-loader';
 import { ThaparProfileLink } from '../components/ThaparProfileLink';
 import { ShareProfileModal } from '../components/ShareProfileModal';
+import { api } from '../api/client';
 
 export function PublicTeacherProfile({ teacherId, onBack, onLoginClick }) {
   const [teacher, setTeacher] = useState(null);
@@ -24,21 +25,21 @@ export function PublicTeacherProfile({ teacherId, onBack, onLoginClick }) {
       setError(null);
       setReviewsPage(1);
       try {
-        // Fetch teacher details
-        const teacherRes = await fetch(`/api/profile/teachers/${encodeURIComponent(teacherId)}`);
-        const teacherData = await teacherRes.json();
-        
-        if (!teacherRes.ok || !teacherData.teacher) {
-          throw new Error(teacherData.error || 'Faculty member not found');
+        // Teacher details; the identifier may be a profile id, a user id or a name slug
+        // such as "dr-anjula-mehto", which the profiles service resolves
+        const teacherData = await api.getTeacherProfile(encodeURIComponent(teacherId));
+        if (!teacherData?.teacher) {
+          throw new Error('Faculty member not found');
         }
 
         const t = teacherData.teacher;
         setTeacher(t);
 
-        // Fetch ratings and reviews
+        // Reviews and ratings are keyed by the teacher's user id
+        const revieweeId = encodeURIComponent(t.userId);
         const [reviewsRes, ratingsRes] = await Promise.all([
-          fetch(`/api/feedback/reviews/${encodeURIComponent(t.userId || t.id)}?page=1`).then(r => r.json()).catch(() => ({ reviews: [], totalReviews: 0 })),
-          fetch(`/api/feedback/ratings/${encodeURIComponent(t.userId || t.id)}`).then(r => r.json()).catch(() => null)
+          api.getTeacherReviews(revieweeId, 1).catch(() => ({ reviews: [], totalReviews: 0 })),
+          api.getTeacherRatings(revieweeId).catch(() => null)
         ]);
 
         const rList = reviewsRes.reviews || [];
@@ -75,7 +76,7 @@ export function PublicTeacherProfile({ teacherId, onBack, onLoginClick }) {
     setLoadingMore(true);
     try {
       const nextPage = reviewsPage + 1;
-      const res = await fetch(`/api/feedback/reviews/${encodeURIComponent(teacher.userId || teacher.id)}?page=${nextPage}`).then(r => r.json());
+      const res = await api.getTeacherReviews(encodeURIComponent(teacher.userId), nextPage);
       const newReviews = res.reviews || [];
       setReviews(prev => [...prev, ...newReviews]);
       setReviewsPage(nextPage);
@@ -251,13 +252,13 @@ export function PublicTeacherProfile({ teacherId, onBack, onLoginClick }) {
               Overall Score
             </div>
             <div style={{ fontSize: '36px', fontWeight: 800, color: 'var(--primary)', margin: '4px 0' }}>
-              {ratings?.overallRating ? ratings.overallRating.toFixed(1) : '5.0'}
+              {ratings?.totalReviews > 0 && ratings?.overallRating ? Number(ratings.overallRating).toFixed(1) : '–'}
             </div>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px' }}>
-              <StarRating rating={Math.round(ratings?.overallRating || 5)} readOnly size={16} />
+              <StarRating rating={ratings?.totalReviews > 0 ? Math.round(ratings.overallRating || 0) : 0} readOnly size={16} />
             </div>
             <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              Based on {ratings?.totalReviews || reviews.length} student reviews
+              {ratings?.totalReviews > 0 ? `Based on ${ratings.totalReviews} student reviews` : 'No ratings yet'}
             </div>
           </div>
         </div>

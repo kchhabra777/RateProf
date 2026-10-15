@@ -16,7 +16,7 @@ import { requireRole } from "../middlewares/roleMiddleware.js";
 
 const router = express.Router();
 
-router.get("/students/leaderboard", getStudentLeaderboard);
+router.get("/students/leaderboard", requireAuth, getStudentLeaderboard);
 router.post("/student", requireAuth, requireRole("STUDENT"), onboardStudent);
 router.put("/student/electives", requireAuth, requireRole("STUDENT"), updateElectives);
 router.post("/student/request-batch-change", requireAuth, requireRole("STUDENT"), requestBatchChange);

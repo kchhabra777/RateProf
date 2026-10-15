@@ -962,6 +962,7 @@ export const ALLOWED_BATCHES = [
   "3F1",
   "3F11",
   "3F12",
+  "F312",
   "3F13",
   "3F14",
   "3F15",

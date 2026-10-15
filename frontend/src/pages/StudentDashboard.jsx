@@ -149,12 +149,9 @@ export const StudentDashboard = () => {
   };
 
   const userRank = React.useMemo(() => {
-    if (!leaderboard || leaderboard.length === 0) return null;
-    const studentProfileId = user?.studentProfile?.id;
-    const rollNo = user?.studentProfile?.rollNumber;
-    const index = leaderboard.findIndex(s => (studentProfileId && s.id === studentProfileId) || (rollNo && s.rollNumber === rollNo));
-    return index !== -1 ? index + 1 : null;
-  }, [leaderboard, user?.studentProfile?.id, user?.studentProfile?.rollNumber]);
+    const mine = leaderboard?.find(s => s.isYou);
+    return mine ? mine.rank : null;
+  }, [leaderboard]);
 
   const fetchMyBatchRequests = async () => {
     try {
@@ -651,28 +648,27 @@ export const StudentDashboard = () => {
           )}
           
           {leaderboard.map((student, idx) => (
-            <div key={student.id} style={{ 
+            <div key={student.rank} style={{ 
               display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '16px', 
               padding: '16px 20px', alignItems: 'center',
-              background: student.id === user?.studentProfile?.id ? 'var(--bg-card-subtle)' : 'transparent',
+              background: student.isYou ? 'var(--bg-card-subtle)' : 'transparent',
               borderBottom: idx < leaderboard.length - 1 ? '1px solid var(--border-light)' : 'none'
             }}>
               <div style={{ width: '30px', textAlign: 'center', fontSize: '16px', fontWeight: 800, color: idx < 3 ? '#eab308' : 'var(--text-secondary)' }}>
-                #{idx + 1}
+                #{student.rank}
               </div>
               <div>
                 <div style={{ fontWeight: 700, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {student.fullName || student.rollNumber}
-                  {student.isCR && <span className="badge" style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fcd34d', fontSize: '10px', padding: '2px 6px' }}>CR</span>}
+                  {student.initials}
+                  {student.isYou && <span className="badge" style={{ fontSize: '10px', padding: '2px 6px' }}>You</span>}
                 </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                  Batch: {student.batch} ({(student.batch?.includes('Q') ? 'COPC' : (student.batch?.includes('C') && !student.batch?.includes('COPC')) ? 'COE' : student.branch)})
-                </div>
+                {student.branch && (
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                    {student.branch}
+                  </div>
+                )}
               </div>
               <div style={{ fontWeight: 800, fontSize: '16px', color: '#a21caf', textAlign: 'right', minWidth: '80px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
-                {student.isCR && (
-                  <Crown size={16} strokeWidth={2.5} style={{ color: '#b45309' }} title="Class Representative" />
-                )}
                 <div>
                   {student.xp} <span style={{ fontSize: '12px', fontWeight: 600 }}>XP</span>
                 </div>

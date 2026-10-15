@@ -1,9 +1,17 @@
-﻿import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY || 'dummy_key'
-});
+const SUMMARY_KEYS = ['teaching', 'grading', 'approachability', 'workload', 'overall'];
 
+let ai = null;
+const getClient = () => {
+  if (!process.env.GEMINI_API_KEY) return null;
+  if (!ai) ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  return ai;
+};
+
+// Returns the five category summaries, or null when no real summary could be produced
+// (no API key, API error, or a malformed response). Never invents a summary: callers must
+// show the summary as unavailable instead.
 export const generateTeacherSummaries = async (reviews) => {
   if (!reviews || reviews.length === 0) {
     throw new Error('No reviews provided to summarize');
@@ -43,9 +51,14 @@ export const generateTeacherSummaries = async (reviews) => {
     }
   `;
 
+  const client = getClient();
+  if (!client) {
+    console.warn('GEMINI_API_KEY is not set; AI summaries are unavailable.');
+    return null;
+  }
+
   try {
-    // Attempt to call the real Gemini API with the correct model for the new key format
-    const response = await ai.models.generateContent({
+    const response = await client.models.generateContent({
       model: 'gemini-3.5-flash',
       contents: prompt,
       config: {
@@ -55,20 +68,16 @@ export const generateTeacherSummaries = async (reviews) => {
 
     const resultText = response.text;
     const jsonStr = resultText.replace(/```json\s*/gi, '').replace(/```\s*/gi, '');
-    return JSON.parse(jsonStr);
+    const parsed = JSON.parse(jsonStr);
+
+    const valid = parsed && SUMMARY_KEYS.every((k) => typeof parsed[k] === 'string' && parsed[k].trim());
+    if (!valid) {
+      console.warn('Gemini returned an incomplete summary; treating it as unavailable.');
+      return null;
+    }
+    return Object.fromEntries(SUMMARY_KEYS.map((k) => [k, parsed[k].trim()]));
   } catch (error) {
-    console.warn('Gemini API call failed (', error.message, '). Falling back to simulated AI response.');
-    
-    // Fallback Mock AI Response so the UI still functions perfectly
-    // Adding an artificial delay to simulate AI thinking time
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    return {
-      teaching: "Students consistently praise the clear and structured lectures. The teaching methodology is highly practical, breaking down complex concepts into easily understandable examples, though a few found the pacing slightly fast.",
-      grading: "Grading is generally considered fair and strictly adheres to the provided rubric. However, students note that the evaluation is tough, requiring thorough understanding rather than just memorization to score well.",
-      approachability: "Extremely approachable and willing to help out of class. Students appreciate the open-door policy and the supportive environment created during doubt-clearing sessions.",
-      workload: "The course workload is heavy and demands consistent weekly effort. Assignments are lengthy but highly relevant to the exams, meaning the extra work pays off in the long run.",
-      overall: "An excellent, highly respected faculty member who pushes students to achieve their best. While the course is demanding, students agree they walk away with a deep, practical understanding of the subject."
-    };
+    console.warn('Gemini API call failed:', error.message);
+    return null;
   }
 };

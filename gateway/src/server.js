@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import rateLimit from "express-rate-limit";
 import "dotenv/config";
@@ -17,26 +18,41 @@ requireEnv("JWT_SECRET");
 // Trust proxy for proper IP resolution in hosted environments (e.g. Render, Vercel, Railway)
 app.set("trust proxy", 1);
 
-// Allowed origins
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:5174",
-  "http://localhost:3000",
+// Browser origins allowed to call the API with credentials. Extra origins (e.g. a preview
+// deployment) can be added through CORS_EXTRA_ORIGINS as a comma-separated list.
+const allowedOrigins = new Set([
+  "https://rateprof.tech",
   "https://www.rateprof.tech",
-  "https://rateprof.tech"
-];
+  "https://campus-feedback-system.vercel.app",
+  ...(process.env.CORS_EXTRA_ORIGINS || "").split(",").map((o) => o.trim()).filter(Boolean)
+]);
+if (process.env.NODE_ENV !== "production") {
+  ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"].forEach((o) => allowedOrigins.add(o));
+}
+
+app.use(helmet({
+  // JSON API only: no pages to frame and no inline content
+  contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } },
+  crossOriginResourcePolicy: { policy: "same-site" }
+}));
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow non-browser requests or allowed origins
-    if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".vercel.app")) {
-      callback(null, true);
-    } else {
-      callback(null, true); // Fallback to allow for testing
-    }
+    // Requests without an Origin header (curl, server-to-server, same-origin rewrites) carry no
+    // ambient browser credentials for another site, so they are not a CORS concern.
+    callback(null, !origin || allowedOrigins.has(origin));
   },
   credentials: true
 }));
+
+// cors() ends preflights from allowed origins. Any preflight that gets here comes from an origin
+// that is not allowed: answer it without CORS headers instead of forwarding it downstream.
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS" && req.headers["access-control-request-method"]) {
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 // Strip client spoofed headers and verify valid token first so limiters know the user identity
 app.use(clerkAuthMiddleware);
@@ -132,6 +148,13 @@ const proxyOptions = (target) => ({
       }
       if (req.headers["x-user-role"]) {
         proxyReq.setHeader("x-user-role", req.headers["x-user-role"]);
+      }
+    },
+    proxyRes: (proxyRes) => {
+      // The gateway owns CORS. Drop the downstream services' own (allow-all) CORS headers so
+      // they cannot override the allow-list above.
+      for (const header of Object.keys(proxyRes.headers)) {
+        if (header.toLowerCase().startsWith("access-control-")) delete proxyRes.headers[header];
       }
     }
   }

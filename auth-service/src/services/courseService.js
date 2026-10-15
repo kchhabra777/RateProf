@@ -189,6 +189,10 @@ export const getEligibleTeachersForStudent = async ({ batch, branch, studentUser
     normalizedBranch = 'COPC';
   } else if (normalizedBatch.includes('C') && !normalizedBatch.includes('COPC')) {
     normalizedBranch = 'COE';
+  } else if (normalizedBatch.includes('F')) {
+    normalizedBranch = 'ECE';
+  } else if (normalizedBatch.includes('O')) {
+    normalizedBranch = 'ENC';
   }
 
   // Determine student's chosen electives (if any)

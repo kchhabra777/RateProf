@@ -140,7 +140,11 @@ export const SuggestTeacherModal = ({ teacher, isOpen, onClose, isCR = false, st
       setPhotoUrl(compressed);
       setPhotoPreview(compressed);
     } catch (err) {
-      // Fallback to direct data URL if canvas resize fails
+      // Fallback to direct data URL if canvas resize fails (the API accepts bodies up to 2 MB)
+      if (file.size > 1.4 * 1024 * 1024) {
+        setError('Could not compress this image. Please pick one under 1.4 MB.');
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (ev) => {
         setPhotoUrl(ev.target.result);

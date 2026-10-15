@@ -169,6 +169,16 @@ export const getAllTeachers = async () => {
   });
 };
 
+const TEACHER_PUBLIC_INCLUDE = {
+  user: {
+    select: {
+      id: true,
+      email: true
+    }
+  },
+  offerings: true
+};
+
 export const getTeacherById = async (idOrUserId) => {
   return await prisma.teacherProfile.findFirst({
     where: {
@@ -177,14 +187,37 @@ export const getTeacherById = async (idOrUserId) => {
         { userId: idOrUserId }
       ]
     },
-    include: {
-      user: {
-        select: {
-          id: true,
-          email: true
-        }
-      },
-      offerings: true
-    }
+    include: TEACHER_PUBLIC_INCLUDE
   });
+};
+
+const HONORIFICS = new Set(["dr", "prof", "professor", "mr", "mrs", "ms"]);
+const nameWords = (text) =>
+  String(text).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter(Boolean);
+const withoutHonorifics = (words) => words.filter((w) => !HONORIFICS.has(w));
+
+// Resolves a public profile slug such as "dr-anjula-mehto" (or "anjula-mehto") to a teacher.
+// Returns null when no teacher, or more than one, matches the name.
+export const getTeacherBySlug = async (slug) => {
+  if (!/^[a-z0-9-]+$/i.test(slug)) return null;
+  const slugWords = nameWords(slug);
+  const coreWords = withoutHonorifics(slugWords);
+  if (coreWords.length === 0) return null;
+
+  const candidates = await prisma.teacherProfile.findMany({
+    where: {
+      AND: coreWords.map((w) => ({ fullName: { contains: w, mode: "insensitive" } }))
+    },
+    include: TEACHER_PUBLIC_INCLUDE,
+    take: 20
+  });
+
+  const coreKey = coreWords.join("-");
+  const matches = candidates.filter((t) => withoutHonorifics(nameWords(t.fullName)).join("-") === coreKey);
+  if (matches.length === 1) return matches[0];
+
+  // Several teachers share the name: accept only an exact slug match, honorific included
+  const exactKey = slugWords.join("-");
+  const exact = matches.filter((t) => nameWords(t.fullName).join("-") === exactKey);
+  return exact.length === 1 ? exact[0] : null;
 };
