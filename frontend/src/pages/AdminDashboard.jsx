@@ -1278,7 +1278,7 @@ export const AdminDashboard = () => {
                       <div style={{ fontSize: '14px', fontWeight: 600, color: r.totalReviews === 0 ? 'var(--text-muted)' : 'var(--text-primary)' }}>
                         {r.totalReviews === 0 ? '—' : `${r.totalReviews} reviews`}
                       </div>
-                      <div>
+                      <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                         <button 
                           type="button"
                           className="btn btn-subtle btn-sm" 

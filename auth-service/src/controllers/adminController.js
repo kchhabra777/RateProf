@@ -102,6 +102,7 @@ export const registerTeacher = async (req, res) => {
       include: { teacherProfile: true }
     });
 
+    invalidateTeachersCache();
     res.status(201).json({ success: true, user });
   } catch (error) {
     res.status(500).json({ error: "Failed to register teacher" });
@@ -164,6 +165,7 @@ export const deleteTeacher = async (req, res) => {
       await prisma.user.deleteMany({ where: { id: targetUserId } }).catch(err => console.warn('User delete warning:', err.message));
     }
 
+    invalidateTeachersCache();
     res.status(200).json({ success: true, message: "Teacher deleted successfully" });
   } catch (error) {
     console.error("Failed to delete teacher:", error);
@@ -224,6 +226,7 @@ export const addTeacherCourse = async (req, res) => {
         ltp: ltp || "L"
       }
     });
+    invalidateTeachersCache();
     res.status(201).json({ course });
   } catch (error) {
     res.status(500).json({ error: "Failed to add course" });
@@ -236,6 +239,7 @@ export const deleteTeacherCourse = async (req, res) => {
     await prisma.courseOffering.delete({
       where: { id: courseId }
     });
+    invalidateTeachersCache();
     res.status(200).json({ message: "Course deleted" });
   } catch (error) {
     res.status(500).json({ error: "Failed to delete course" });
@@ -251,6 +255,7 @@ export const updateTeacherCourse = async (req, res) => {
       where: { id: courseId },
       data: { courseCode, courseName, batchTaught, branchTaught, ltp, academicYear }
     });
+    invalidateTeachersCache();
     res.status(200).json({ message: "Course updated", course: updated });
   } catch (error) {
     res.status(500).json({ error: "Failed to update course" });
@@ -292,6 +297,7 @@ export const updateTeacher = async (req, res) => {
       where: { id: teacherProfile.id },
       data: { fullName, department, designation }
     });
+    invalidateTeachersCache();
     res.status(200).json({ message: "Teacher updated", profile: updated });
   } catch (error) {
     res.status(500).json({ error: "Failed to update teacher" });
