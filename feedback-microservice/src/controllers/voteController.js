@@ -4,13 +4,7 @@ import prisma from "../lib/prisma.js";
 export const voteReview = async (req, res) => {
     try {
         const { id } = req.params;
-        const { user, vote } = req.body;
-
-        if (!user || !user.userId) {
-            return res.status(400).json({
-                error: "User is required"
-            });
-        }
+        const { vote } = req.body;
 
         if (!vote || !["UP", "DOWN"].includes(vote.type)) {
             return res.status(400).json({
@@ -18,22 +12,12 @@ export const voteReview = async (req, res) => {
             });
         }
 
-        const voter = await prisma.user.findUnique({
-            where: { id: user.userId },
-            select: { isBanned: true }
-        });
-        if (voter && voter.isBanned) {
-            return res.status(403).json({
-                error: "Your account has been suspended by an administrator. You cannot vote.",
-                isBanned: true
-            });
-        }
-
         const reviewId = Number(id);
 
+        // Voter is the gateway-verified user; any user ID in the body is ignored
         const result = await voteReviewService({
             reviewId,
-            userId: user.userId,
+            userId: req.authUser.id,
             voteType: vote.type
         });
 

@@ -1,7 +1,13 @@
+import crypto from "crypto";
 import nodemailer from "nodemailer";
 import prisma from "../lib/prisma.js";
 
 let transporter = null;
+
+const MAX_OTP_ATTEMPTS = 5;
+// Wrong guesses per email for the current code. A new code resets the count; reaching the
+// limit burns the code so a 6-digit OTP can't be brute-forced within its 10-minute window.
+const failedAttempts = new Map();
 
 const initTransporter = () => {
   if (!transporter && process.env.SMTP_HOST && process.env.SMTP_USER) {
@@ -29,13 +35,14 @@ export const sendOtp = async (email, purpose = "verification") => {
   const normalizedEmail = email.trim().toLowerCase();
   
   // Generate 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otp = crypto.randomInt(100000, 1000000).toString();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
   // Delete prior OTPs for this email to prevent collisions
   await prisma.otpVerification.deleteMany({
     where: { email: normalizedEmail }
   });
+  failedAttempts.delete(normalizedEmail);
 
   // Store new OTP
   await prisma.otpVerification.create({
@@ -46,12 +53,10 @@ export const sendOtp = async (email, purpose = "verification") => {
     }
   });
 
-  console.log(`\n========================================`);
-  console.log(`✉️  [CAMPUS FEEDBACK OTP] (${purpose.toUpperCase()})`);
-  console.log(`To: ${normalizedEmail}`);
-  console.log(`Code: ${otp}`);
-  console.log(`Valid until: ${expiresAt.toISOString()}`);
-  console.log(`========================================\n`);
+  // Codes are printed only in local development, where SMTP is usually not configured
+  if (process.env.NODE_ENV !== "production") {
+    console.log(`\n✉️  [DEV OTP] (${purpose.toUpperCase()}) ${normalizedEmail}: ${otp} (valid until ${expiresAt.toISOString()})\n`);
+  }
 
   let emailSent = false;
   const mailClient = initTransporter();
@@ -98,10 +103,16 @@ export const sendOtp = async (email, purpose = "verification") => {
     }
   }
 
+  if (!emailSent && process.env.NODE_ENV === "production") {
+    const err = new Error("We couldn't send the verification email right now. Please try again in a few minutes.");
+    err.status = 503;
+    throw err;
+  }
+
+  // The code itself is never returned to the caller
   return {
     success: true,
     message: emailSent ? "OTP sent successfully" : "Verification code generated",
-    otp,
     emailSent
   };
 };
@@ -112,16 +123,33 @@ export const verifyOtp = async (email, otp) => {
   const record = await prisma.otpVerification.findFirst({
     where: {
       email: normalizedEmail,
-      otp: otp.trim(),
       expiresAt: {
         gt: new Date()
       }
-    }
+    },
+    orderBy: { createdAt: "desc" }
   });
 
   if (!record) {
     return false;
   }
+
+  const provided = Buffer.from(String(otp).trim());
+  const expected = Buffer.from(record.otp);
+  const matches = provided.length === expected.length && crypto.timingSafeEqual(provided, expected);
+
+  if (!matches) {
+    const attempts = (failedAttempts.get(normalizedEmail) || 0) + 1;
+    if (attempts >= MAX_OTP_ATTEMPTS) {
+      failedAttempts.delete(normalizedEmail);
+      await prisma.otpVerification.deleteMany({ where: { email: normalizedEmail } });
+    } else {
+      failedAttempts.set(normalizedEmail, attempts);
+    }
+    return false;
+  }
+
+  failedAttempts.delete(normalizedEmail);
 
   // Delete used OTP
   await prisma.otpVerification.delete({

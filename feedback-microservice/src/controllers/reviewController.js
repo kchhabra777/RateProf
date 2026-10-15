@@ -1,5 +1,4 @@
 import prisma from "../lib/prisma.js";
-import jwt from "jsonwebtoken";
 import {
     createReview as createReviewService,
     getReviewsByReviewee,
@@ -9,7 +8,6 @@ import {
 export const createReview = async (req, res) => {
     try {
         const {
-            reviewer,
             reviewee,
             rating,
             reviewText,
@@ -19,19 +17,14 @@ export const createReview = async (req, res) => {
             tags
         } = req.body;
 
-        // Validation
-        if (!reviewer || !reviewer.userId) {
-            return res.status(400).json({
-                error: "Reviewer information is required"
+        // The reviewer is always the signed-in user; any reviewer object in the body is ignored
+        const reviewerUser = req.authUser;
+        if (reviewerUser.role !== "STUDENT") {
+            return res.status(403).json({
+                error: "Only students can submit faculty reviews."
             });
         }
-
-        // Prevent review impersonation: If request has an authenticated session from the gateway, enforce it
-        const isFromGateway = req.headers["x-gateway-secret"] === (process.env.GATEWAY_INTERNAL_SECRET || "rateprof_internal_gw_sec_2026_ti_campus");
-        const authenticatedUserId = req.headers["x-user-id"];
-        if (isFromGateway && authenticatedUserId) {
-            reviewer.userId = authenticatedUserId;
-        }
+        const studentProfile = reviewerUser.studentProfile;
 
         if (!reviewee || !reviewee.userId) {
             return res.status(400).json({
@@ -52,25 +45,13 @@ export const createReview = async (req, res) => {
             });
         }
 
-        // Check if reviewer is banned
-        const reviewerUser = await prisma.user.findUnique({
-            where: { id: reviewer.userId },
-            select: { isBanned: true }
-        });
-        if (reviewerUser && reviewerUser.isBanned) {
-            return res.status(403).json({
-                error: "Your account has been suspended by an administrator. You cannot submit feedback.",
-                isBanned: true
-            });
-        }
-
         const review = await createReviewService({
-            reviewerId: reviewer.userId,
-            reviewerName: reviewer.name || reviewer.fullName || null,
-            reviewerEmail: reviewer.email || null,
-            reviewerRollNo: reviewer.rollNumber || null,
-            reviewerBatch: reviewer.batch || null,
-            reviewerBranch: reviewer.branch || null,
+            reviewerId: reviewerUser.id,
+            reviewerName: studentProfile?.fullName || reviewerUser.email.split("@")[0],
+            reviewerEmail: reviewerUser.email,
+            reviewerRollNo: studentProfile?.rollNumber || null,
+            reviewerBatch: studentProfile?.batch || reviewerUser.detectedBatch || null,
+            reviewerBranch: studentProfile?.branch || null,
             revieweeId: reviewee.userId,
             courseCode: courseCode || null,
             courseName: courseName || null,
@@ -104,39 +85,8 @@ export const getReviews = async (req, res) => {
 
         const result = await getReviewsByReviewee(id, page, limit);
 
-        const GATEWAY_INTERNAL_SECRET = process.env.GATEWAY_INTERNAL_SECRET || "rateprof_internal_gw_sec_2026_ti_campus";
-        const JWT_SECRET = process.env.JWT_SECRET || "thapar_campus_feedback_jwt_secret_key_2026";
-        const isGatewayVerified = req.headers["x-gateway-secret"] === GATEWAY_INTERNAL_SECRET;
-
-        let requesterEmail = isGatewayVerified && req.headers["x-user-email"] ? req.headers["x-user-email"].toLowerCase() : "";
-        let requesterRole = isGatewayVerified && req.headers["x-user-role"] ? req.headers["x-user-role"].toUpperCase() : "";
-
-        // Fallback: check Authorization Bearer token directly with cryptographic verification
-        if (!requesterEmail || !requesterRole) {
-            const authHeader = req.headers.authorization;
-            if (authHeader && authHeader.startsWith("Bearer ")) {
-                try {
-                    const token = authHeader.split(" ")[1];
-                    const decoded = jwt.verify(token, JWT_SECRET);
-                    if (decoded) {
-                        if (decoded.email) requesterEmail = decoded.email.toLowerCase();
-                        if (decoded.role) requesterRole = decoded.role.toUpperCase();
-                    }
-                } catch (e) {
-                    // Invalid/expired token
-                }
-            }
-        }
-
-        let isAdmin = false;
-        if (requesterRole === "ADMIN" && requesterEmail) {
-            const user = await prisma.user.findUnique({
-                where: { email: requesterEmail }
-            });
-            if (user && user.role === "ADMIN") {
-                isAdmin = true;
-            }
-        }
+        // Admin status comes from the stored role of the gateway-verified user, never from token claims
+        const isAdmin = req.authUser?.role === "ADMIN" && !req.authUser.isBanned;
 
         // Anonymize for non-admins, but populate student profile details for admins
         let processedReviews;
@@ -209,40 +159,8 @@ export const getSingleReview = async (req, res) => {
         if (!review) {
             return res.status(404).json({ error: "Review not found" });
         }
-        let requesterEmail = req.headers["x-user-email"] ? req.headers["x-user-email"].toLowerCase() : "";
-        let requesterRole = req.headers["x-user-role"] ? req.headers["x-user-role"].toUpperCase() : "";
-
-        if (!requesterEmail || !requesterRole) {
-            const authHeader = req.headers.authorization;
-            if (authHeader && authHeader.startsWith("Bearer ")) {
-                try {
-                    const token = authHeader.split(" ")[1];
-                    const parts = token.split('.');
-                    if (parts.length === 3) {
-                        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
-                        if (payload.email) requesterEmail = payload.email.toLowerCase();
-                        if (payload.role) requesterRole = payload.role.toUpperCase();
-                    }
-                } catch (e) {}
-            }
-        }
-
-        let isAdmin = requesterRole === "ADMIN";
-
-        if (!isAdmin && requesterEmail) {
-            const user = await prisma.user.findUnique({
-                where: { email: requesterEmail }
-            });
-            if (user && user.role === "ADMIN") {
-                isAdmin = true;
-            } else {
-                const localPart = requesterEmail.split("@")[0] || "";
-                const baseLocalPart = localPart.split("+")[0];
-                const aliasPart = localPart.includes("+") ? localPart.split("+")[1] : "";
-                const adminEmails = ["doaa", "dosa", "admin"];
-                isAdmin = adminEmails.includes(baseLocalPart) || adminEmails.includes(aliasPart);
-            }
-        }
+        // Admin status comes from the stored role of the gateway-verified user, never from token claims
+        const isAdmin = req.authUser?.role === "ADMIN" && !req.authUser.isBanned;
 
         let processedReview = review;
         if (isAdmin) {

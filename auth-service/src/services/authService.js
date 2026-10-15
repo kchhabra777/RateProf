@@ -110,7 +110,8 @@ export const loginUser = async ({ email, password }) => {
   });
 
   if (!user) {
-    throw new Error("No account found with this email address.");
+    // Same message as a wrong password, so the login form can't be used to check who is registered
+    throw new Error("Invalid email or password.");
   }
 
   if (user.isBanned) {

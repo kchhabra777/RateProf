@@ -1,54 +1,78 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 echo "🚀 Starting Campus Feedback System AWS Deployment..."
 
-export DATABASE_URL="postgresql://neondb_owner:npg_5cqpzoHbZ7IM@ep-quiet-pond-aycfuiga-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+# Secrets come from the environment (GitHub Actions secrets passed over SSH), never from this file.
+for var in DATABASE_URL JWT_SECRET GATEWAY_INTERNAL_SECRET CLERK_SECRET_KEY CLERK_PUBLISHABLE_KEY; do
+  if [ -z "${!var:-}" ]; then
+    echo "❌ Missing required environment variable: $var" >&2
+    exit 1
+  fi
+done
+GEMINI_API_KEY="${GEMINI_API_KEY:-}"
+ADMIN_EMAILS="${ADMIN_EMAILS:-}"
+SMTP_HOST="${SMTP_HOST:-}"
+SMTP_PORT="${SMTP_PORT:-587}"
+SMTP_USER="${SMTP_USER:-}"
+SMTP_PASS="${SMTP_PASS:-}"
+SMTP_FROM="${SMTP_FROM:-}"
+
+# .env files readable by the deploy user only
+umask 077
 
 # 1. Write auth-service .env
 echo "📦 Configuring auth-service .env..."
-cat << 'EOF' > auth-service/.env
-DATABASE_URL="postgresql://neondb_owner:npg_5cqpzoHbZ7IM@ep-quiet-pond-aycfuiga-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+cat << ENVFILE > auth-service/.env
+DATABASE_URL="${DATABASE_URL}"
 PORT=6001
 NODE_ENV=production
-JWT_SECRET="thapar_campus_feedback_jwt_secret_key_2026"
-GATEWAY_INTERNAL_SECRET="rateprof_internal_gw_sec_2026_ti_campus"
-EOF
+JWT_SECRET="${JWT_SECRET}"
+GATEWAY_INTERNAL_SECRET="${GATEWAY_INTERNAL_SECRET}"
+CLERK_SECRET_KEY="${CLERK_SECRET_KEY}"
+ADMIN_EMAILS="${ADMIN_EMAILS}"
+SMTP_HOST="${SMTP_HOST}"
+SMTP_PORT=${SMTP_PORT}
+SMTP_USER="${SMTP_USER}"
+SMTP_PASS="${SMTP_PASS}"
+SMTP_FROM="${SMTP_FROM}"
+ENVFILE
 
 # 2. Write feedback-microservice .env
 echo "📦 Configuring feedback-microservice .env..."
-cat << EOF > feedback-microservice/.env
-DATABASE_URL="postgresql://neondb_owner:npg_5cqpzoHbZ7IM@ep-quiet-pond-aycfuiga-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+cat << ENVFILE > feedback-microservice/.env
+DATABASE_URL="${DATABASE_URL}"
 PORT=6002
 NODE_ENV=production
-GATEWAY_INTERNAL_SECRET="rateprof_internal_gw_sec_2026_ti_campus"
+GATEWAY_INTERNAL_SECRET="${GATEWAY_INTERNAL_SECRET}"
 GEMINI_API_KEY="${GEMINI_API_KEY}"
-EOF
+ENVFILE
 
 # 3. Write gateway .env
 echo "📦 Configuring gateway .env..."
-cat << 'EOF' > gateway/.env
+cat << ENVFILE > gateway/.env
 PORT=8000
 NODE_ENV=production
 AUTH_SERVICE_URL=http://localhost:6001
 FEEDBACK_SERVICE_URL=http://localhost:6002
-GATEWAY_INTERNAL_SECRET="rateprof_internal_gw_sec_2026_ti_campus"
-CLERK_SECRET_KEY="sk_test_DwHkHkKtXXeg6CUjyLf7tTnxjqDPo2MD07pBVap8mO"
-CLERK_PUBLISHABLE_KEY="pk_test_bWFueS1saW9uZmlzaC03NDE3LmNsZXJrLmFjY291bnRzLmRldiQ"
-EOF
+JWT_SECRET="${JWT_SECRET}"
+GATEWAY_INTERNAL_SECRET="${GATEWAY_INTERNAL_SECRET}"
+CLERK_SECRET_KEY="${CLERK_SECRET_KEY}"
+CLERK_PUBLISHABLE_KEY="${CLERK_PUBLISHABLE_KEY}"
+ENVFILE
 
 # 4. Install all dependencies and generate Prisma clients
 echo "📦 Installing packages across microservices..."
 npm run install:all
 echo "🔧 Generating Prisma clients..."
-cd auth-service && npx prisma generate && cd ..
-cd feedback-microservice && npx prisma generate && cd ..
+(cd auth-service && npx prisma generate)
+(cd feedback-microservice && npx prisma generate)
 
 # 5. Start/Restart services with PM2
 echo "⚡ Starting services with PM2..."
-cd auth-service && pm2 delete campus-auth 2>/dev/null || true && pm2 start src/server.js --name "campus-auth" && cd ..
-cd feedback-microservice && pm2 delete campus-feedback 2>/dev/null || true && pm2 start src/server.js --name "campus-feedback" && cd ..
-cd gateway && pm2 delete campus-gateway 2>/dev/null || true && pm2 start src/server.js --name "campus-gateway" && cd ..
+(cd auth-service && { pm2 delete campus-auth 2>/dev/null || true; } && pm2 start src/server.js --name "campus-auth")
+(cd feedback-microservice && { pm2 delete campus-feedback 2>/dev/null || true; } && pm2 start src/server.js --name "campus-feedback")
+(cd gateway && { pm2 delete campus-gateway 2>/dev/null || true; } && pm2 start src/server.js --name "campus-gateway")
 
 pm2 save
 

@@ -1,12 +1,11 @@
 import { createClerkClient, verifyToken } from "@clerk/backend";
 import jwt from "jsonwebtoken";
+import { requireEnv } from "../secrets.js";
 
 const clerk = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY,
   publishableKey: process.env.CLERK_PUBLISHABLE_KEY
 });
-
-const JWT_SECRET = process.env.JWT_SECRET || "thapar_campus_feedback_jwt_secret_key_2026";
 
 // Cache user email addresses to minimize Clerk API calls
 const userCache = new Map();
@@ -65,7 +64,7 @@ export const clerkAuthMiddleware = async (req, res, next) => {
 
   // 2. Cryptographic Local JWT verification (reject unverified/tampered tokens)
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, requireEnv("JWT_SECRET"));
     if (decoded) {
       const resolvedId = decoded.userId || decoded.sub || decoded.id;
       if (resolvedId) req.headers["x-user-id"] = resolvedId;

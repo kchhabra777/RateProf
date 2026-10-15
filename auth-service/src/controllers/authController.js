@@ -8,6 +8,7 @@ import { sendOtp as sendOtpService, verifyOtp } from "../services/emailOtpServic
 import { determineRoleFromEmail } from "../utils/roleDetector.js";
 import prisma from "../lib/prisma.js";
 import { generateToken } from "../utils/jwt.js";
+import { isFromGateway } from "../utils/secrets.js";
 import bcrypt from "bcryptjs";
 
 const syncPasswordToClerkIfApplicable = async (user, newPassword) => {
@@ -85,7 +86,7 @@ export const requestOtp = async (req, res) => {
       detectedBatch: roleInfo.batch
     });
   } catch (error) {
-    return res.status(400).json({ error: error.message });
+    return res.status(error.status || 400).json({ error: error.message });
   }
 };
 
@@ -131,17 +132,27 @@ export const getMe = async (req, res) => {
 
 export const syncClerkUser = async (req, res) => {
   try {
-    const { email, fullName, clerkId } = req.body;
-    if (!email) {
-      return res.status(400).json({ error: "Email is required." });
+    // The email must come from a token the gateway has verified (Clerk session or campus JWT).
+    // Anything in req.body is attacker-controlled and is never used to pick the account.
+    const verifiedEmail = isFromGateway(req) ? req.headers["x-user-email"] : null;
+    if (!verifiedEmail) {
+      return res.status(401).json({ error: "Please sign in again to continue." });
     }
 
-    const roleInfo = determineRoleFromEmail(email);
+    const normalizedEmail = verifiedEmail.trim().toLowerCase();
+    if (req.body?.email && req.body.email.trim().toLowerCase() !== normalizedEmail) {
+      return res.status(403).json({ error: "Signed-in account does not match the requested email." });
+    }
 
+    const verifiedId = req.headers["x-user-id"];
+    const clerkId = typeof verifiedId === "string" && verifiedId.startsWith("user_") ? verifiedId : null;
+
+    // Existing accounts keep their stored role; role detection only runs for new sign-ups
     let user = await prisma.user.findUnique({
-      where: { email: roleInfo.email },
+      where: { email: normalizedEmail },
       include: { studentProfile: true, teacherProfile: true }
     });
+    const roleInfo = user ? null : determineRoleFromEmail(normalizedEmail);
 
     if (user && user.isBanned) {
       return res.status(403).json({
@@ -182,9 +193,10 @@ export const syncClerkUser = async (req, res) => {
       role: user.role,
       batch: user.detectedBatch
     });
-    return res.status(200).json({ user, token });
+    const { passwordHash, ...safeUser } = user;
+    return res.status(200).json({ user: safeUser, token });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(400).json({ error: error.message });
   }
 };
 
@@ -219,11 +231,10 @@ export const forgotPasswordSendOtp = async (req, res) => {
       message: otpResult.emailSent
         ? `Password reset verification code sent to ${normalizedEmail}`
         : `Password reset verification code generated for ${normalizedEmail}`,
-      otp: !otpResult.emailSent ? otpResult.otp : undefined,
       emailSent: otpResult.emailSent
     });
   } catch (error) {
-    return res.status(400).json({ error: error.message });
+    return res.status(error.status || 400).json({ error: error.message });
   }
 };
 
@@ -294,11 +305,10 @@ export const changePasswordSendOtp = async (req, res) => {
       message: otpResult.emailSent
         ? `Verification code sent to your registered email (${user.email})`
         : `Verification code generated for ${user.email}`,
-      otp: !otpResult.emailSent ? otpResult.otp : undefined,
       emailSent: otpResult.emailSent
     });
   } catch (error) {
-    return res.status(400).json({ error: error.message });
+    return res.status(error.status || 400).json({ error: error.message });
   }
 };
 

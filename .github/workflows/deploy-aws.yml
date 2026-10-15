@@ -16,25 +16,34 @@ jobs:
 
       - name: SSH and Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          GATEWAY_INTERNAL_SECRET: ${{ secrets.GATEWAY_INTERNAL_SECRET }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
+          envs: DATABASE_URL,JWT_SECRET,GATEWAY_INTERNAL_SECRET,CLERK_SECRET_KEY,CLERK_PUBLISHABLE_KEY,GEMINI_API_KEY,ADMIN_EMAILS,SMTP_HOST,SMTP_PORT,SMTP_USER,SMTP_PASS,SMTP_FROM
           script: |
             echo "🚀 Connecting to EC2 and pulling latest changes from GitHub..."
             cd ~/campus-feedback-system || cd campus-feedback-system || cd /home/ubuntu/campus-feedback-system
-            
+
             # Stash any local untracked changes and reset to origin/main
             git fetch origin main
             git reset --hard origin/main
-            
-            # Ensure Gemini API key is configured on the instance
-            if [ ! -z "${{ secrets.GEMINI_API_KEY }}" ]; then
-              grep -q "GEMINI_API_KEY" feedback-microservice/.env 2>/dev/null || echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> feedback-microservice/.env
-            fi
-            
-            # Execute automated deployment script
+
+            # Execute automated deployment script (reads secrets from the envs passed above)
             chmod +x deploy-aws.sh
             bash deploy-aws.sh
             

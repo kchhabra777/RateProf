@@ -8,44 +8,30 @@ import prisma from "../lib/prisma.js";
 export const createReply = async (req, res) => {
     try {
         const { id } = req.params; // reviewId
-        const {
-            authorId,
-            authorRole,
-            authorName,
-            authorBadge,
-            replyText,
-            parentReplyId
-        } = req.body;
-
-        if (!authorId) {
-            return res.status(400).json({ error: "Author ID is required" });
-        }
-
-        if (!["STUDENT", "TEACHER", "ADMIN"].includes(authorRole)) {
-            return res.status(403).json({ error: "Only registered students, faculty, and admins can post in discussion threads." });
-        }
+        const { replyText, parentReplyId } = req.body;
 
         if (!replyText || replyText.trim() === "") {
             return res.status(400).json({ error: "Reply text is required" });
         }
 
-        const authorUser = await prisma.user.findUnique({
-            where: { id: authorId },
-            select: { isBanned: true }
-        });
-        if (authorUser && authorUser.isBanned) {
-            return res.status(403).json({
-                error: "Your account has been suspended by an administrator. You cannot post replies.",
-                isBanned: true
-            });
+        // Author identity, role and badge come from the gateway-verified user so nobody can post as "Faculty"
+        const author = req.authUser;
+        let authorName = "Anonymous Student";
+        let authorBadge = "Verified Student";
+        if (author.role === "TEACHER") {
+            authorName = author.teacherProfile?.fullName || "Faculty Member";
+            authorBadge = `${author.teacherProfile?.designation || "Faculty"} (${author.teacherProfile?.department || "Department"})`;
+        } else if (author.role === "ADMIN") {
+            authorName = "Administrator";
+            authorBadge = "Admin";
         }
 
         const reply = await createReplyService({
             reviewId: Number(id),
-            authorId,
-            authorRole,
-            authorName: authorName || (authorRole === "TEACHER" ? "Faculty Member" : authorRole === "ADMIN" ? "Administrator" : "Student"),
-            authorBadge: authorBadge || (authorRole === "TEACHER" ? "Faculty" : authorRole === "ADMIN" ? "Admin" : "Student"),
+            authorId: author.id,
+            authorRole: author.role,
+            authorName,
+            authorBadge,
             replyText: replyText.trim(),
             parentReplyId: parentReplyId ? Number(parentReplyId) : null
         });
@@ -60,32 +46,18 @@ export const createReply = async (req, res) => {
 export const voteOnReply = async (req, res) => {
     try {
         const { replyId } = req.params;
-        const { user, vote } = req.body;
-
-        if (!user || !user.userId) {
-            return res.status(400).json({ error: "User is required" });
-        }
+        const { vote } = req.body;
 
         if (!vote || !["UP", "DOWN"].includes(vote.type)) {
             return res.status(400).json({ error: "Vote type must be UP or DOWN" });
         }
 
-        const voterUser = await prisma.user.findUnique({
-            where: { id: user.userId },
-            select: { isBanned: true }
-        });
-        if (voterUser && voterUser.isBanned) {
-            return res.status(403).json({
-                error: "Your account has been suspended by an administrator. You cannot vote.",
-                isBanned: true
-            });
-        }
-
         const numReplyId = Number(replyId);
 
+        // Voter is the gateway-verified user; any user ID in the body is ignored
         const result = await voteReplyService({
             replyId: numReplyId,
-            userId: user.userId,
+            userId: req.authUser.id,
             voteType: vote.type
         });
 

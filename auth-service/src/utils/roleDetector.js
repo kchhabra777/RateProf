@@ -16,12 +16,19 @@ export function determineRoleFromEmail(email) {
 
   const localPart = normalized.substring(0, normalized.indexOf("@"));
 
-  // Check for admin emails (including + aliases for testing like kchhabra_be24+admin@thapar.edu)
-  const adminEmails = ["doaa", "dosa", "admin"];
-  const baseLocalPart = localPart.split("+")[0];
-  const aliasPart = localPart.includes("+") ? localPart.split("+")[1] : "";
-  
-  if (adminEmails.includes(baseLocalPart) || adminEmails.includes(aliasPart)) {
+  // Plus-addressing delivers to the same mailbox, so "name+x@thapar.edu" would let one person
+  // hold several accounts (and earlier, "+admin" granted the ADMIN role). Reject it outright.
+  if (localPart.includes("+")) {
+    throw new Error("Please use your primary @thapar.edu address without a '+' alias.");
+  }
+
+  // Admin role comes only from an explicit list of institutional mailboxes, never from aliases.
+  const adminEmails = (process.env.ADMIN_EMAILS || "doaa@thapar.edu,dosa@thapar.edu,admin@thapar.edu")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (adminEmails.includes(normalized)) {
     return {
       role: "ADMIN",
       batch: null,

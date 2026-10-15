@@ -1,4 +1,4 @@
-﻿import express from "express";
+import express from "express";
 import {
     createReview,
     getReviews,
@@ -7,10 +7,11 @@ import {
     getPublicTags,
     getTeacherAISummary
 } from "../controllers/reviewController.js";
+import { requireUser } from "../lib/gatewayAuth.js";
 
 const router = express.Router();
 
-router.post("/", createReview);
+router.post("/", requireUser, createReview);
 router.get("/tags", getPublicTags);
 router.get("/teachers/:teacherId/tags", getTeacherTagStats);
 router.get("/teachers/:teacherId/ai-summary", getTeacherAISummary);

@@ -4,13 +4,15 @@ import { createProxyMiddleware } from "http-proxy-middleware";
 import rateLimit from "express-rate-limit";
 import "dotenv/config";
 import { clerkAuthMiddleware } from "./middleware/clerkAuth.js";
+import { requireEnv } from "./secrets.js";
 
 const app = express();
 const PORT = process.env.PORT || 8000;
 
 const AUTH_SERVICE_URL = (process.env.AUTH_SERVICE_URL || "http://localhost:5001").replace(/\/$/, "");
 const FEEDBACK_SERVICE_URL = (process.env.FEEDBACK_SERVICE_URL || "http://localhost:5000").replace(/\/$/, "");
-const GATEWAY_INTERNAL_SECRET = process.env.GATEWAY_INTERNAL_SECRET || "rateprof_internal_gw_sec_2026_ti_campus";
+const GATEWAY_INTERNAL_SECRET = requireEnv("GATEWAY_INTERNAL_SECRET");
+requireEnv("JWT_SECRET");
 
 // Trust proxy for proper IP resolution in hosted environments (e.g. Render, Vercel, Railway)
 app.set("trust proxy", 1);
@@ -86,11 +88,32 @@ const reviewSubmissionLimiter = rateLimit({
 
 app.use(generalLimiter);
 app.use([
+  "/api/auth/send-otp",
+  "/auth/send-otp",
   "/api/auth/forgot-password/send-otp",
   "/auth/forgot-password/send-otp",
   "/api/auth/change-password/send-otp",
   "/auth/change-password/send-otp"
 ], otpSendLimiter);
+
+// 5. OTP verification limiter (slows brute-forcing 6-digit codes; the auth service also locks a code after 5 misses)
+const otpVerifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  keyGenerator: (req) => req.headers["x-user-id"] || req.ip,
+  validate: { keyGeneratorIpFallback: false },
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many verification attempts. Please wait a few minutes and try again." }
+});
+app.use([
+  "/api/auth/signup",
+  "/auth/signup",
+  "/api/auth/forgot-password/reset",
+  "/auth/forgot-password/reset",
+  "/api/auth/change-password/verify-and-update",
+  "/auth/change-password/verify-and-update"
+], otpVerifyLimiter);
 app.use(["/api/auth/login", "/auth/login"], loginLimiter);
 
 const proxyOptions = (target) => ({

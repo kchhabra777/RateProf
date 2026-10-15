@@ -41,3 +41,6 @@ rateprof-reel/
 rateprof-remotion/
 auth-service/dry_run_teachers.js
 auth-service/test_db.js
+
+# Private security audit (contains exploit details)
+AUDIT.md

@@ -6,6 +6,7 @@ import voteRoutes from "./routes/voteRoutes.js";
 import flagRoutes from "./routes/flagRoutes.js";
 import replyRoutes from "./routes/replyRoutes.js";
 import ratingRoutes from "./routes/ratingRoutes.js";
+import { attachGatewayUser } from "./lib/gatewayAuth.js";
 
 const app = express();
 
@@ -19,6 +20,8 @@ app.get("/health", (req, res) => {
         service: "Feedback Management Microservice"
     });
 });
+
+app.use(attachGatewayUser);
 
 app.use("/reviews", flagRoutes);
 app.use("/reviews", voteRoutes);
