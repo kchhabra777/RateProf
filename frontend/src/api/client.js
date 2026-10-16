@@ -321,6 +321,9 @@ export const api = {
   toggleStudentCR: (studentId) => request(`/admin/students/${studentId}/toggle-cr`, {
     method: "PATCH"
   }),
+  deleteStudentProfile: (studentId) => request(`/admin/students/${studentId}/profile`, {
+    method: "DELETE"
+  }),
   getTeacherSuggestions: () => request("/admin/teacher-suggestions"),
   approveTeacherSuggestion: (id) => request(`/admin/teacher-suggestions/${id}/approve`, {
     method: "POST"

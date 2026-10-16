@@ -15,6 +15,7 @@ import {
   updateCommunityTag,
   deleteCommunityTag,
   toggleStudentCR,
+  deleteStudentProfile,
   getTeacherSuggestions,
   approveTeacherSuggestion,
   rejectTeacherSuggestion,
@@ -44,6 +45,7 @@ router.delete("/tags/:id", deleteCommunityTag);
 router.get("/students", getStudents);
 router.put("/students/:id", updateStudent);
 router.patch("/students/:id/toggle-cr", toggleStudentCR);
+router.delete("/students/:id/profile", deleteStudentProfile);
 router.patch("/users/:id/ban", banUser);
 router.post("/register-teacher", registerTeacher);
 router.put("/teachers/:id", updateTeacher);

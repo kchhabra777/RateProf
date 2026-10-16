@@ -392,6 +392,51 @@ export const toggleStudentCR = async (req, res) => {
   }
 };
 
+export const deleteStudentProfile = async (req, res) => {
+  try {
+    const { id } = req.params; // student userId
+
+    // Look up by userId first, or by studentProfile.id
+    let studentProfile = await prisma.studentProfile.findFirst({
+      where: {
+        OR: [{ userId: id }, { id }]
+      }
+    });
+
+    if (!studentProfile) {
+      return res.status(404).json({ error: "Student profile not found" });
+    }
+
+    const targetUserId = studentProfile.userId;
+    const profileId = studentProfile.id;
+
+    // Cascade: delete all child records
+    await Promise.allSettled([
+      prisma.review.deleteMany({ where: { reviewerId: targetUserId } }),
+      prisma.review.deleteMany({ where: { revieweeId: targetUserId } }),
+      prisma.profileRating.deleteMany({ where: { userId: targetUserId } }),
+      prisma.batchChangeRequest.deleteMany({ where: { studentId: profileId } }),
+      prisma.teacherNameSuggestion.deleteMany({ where: { studentId: profileId } }),
+    ]);
+
+    // Delete the student profile record
+    await prisma.studentProfile.delete({ where: { id: profileId } }).catch(err =>
+      console.warn("StudentProfile delete warning:", err.message)
+    );
+
+    // Mark user as profile incomplete so they re-onboard (do NOT delete auth account)
+    await prisma.user.update({
+      where: { id: targetUserId },
+      data: { isProfileComplete: false }
+    }).catch(err => console.warn("User update warning:", err.message));
+
+    res.status(200).json({ success: true, message: "Student profile deleted successfully. The user's auth account is preserved." });
+  } catch (error) {
+    console.error("Failed to delete student profile:", error);
+    res.status(500).json({ error: error.message || "Failed to delete student profile" });
+  }
+};
+
 export const getTeacherSuggestions = async (req, res) => {
   try {
     const suggestions = await prisma.teacherNameSuggestion.findMany({

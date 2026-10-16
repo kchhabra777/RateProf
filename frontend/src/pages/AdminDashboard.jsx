@@ -91,10 +91,22 @@ const StatCard = ({ icon: Icon, label, value, sub, accent }) => (
   </div>
 );
 
-export const AdminDashboard = () => {
+export const AdminDashboard = ({ onGoHome }) => {
   const { user } = useAuth();
 
   const [activeTab, setActiveTab] = useState('analytics'); // analytics, faculty, students, register...
+
+  useEffect(() => {
+    const handleHomeReset = () => {
+      setSelectedTeacher(null);
+      setActiveTab('analytics');
+      setSearchQuery('');
+      setIsAIInsightsOpen(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    window.addEventListener('rateprof:navigate-home', handleHomeReset);
+    return () => window.removeEventListener('rateprof:navigate-home', handleHomeReset);
+  }, []);
 
   // Phase 1.1: Campus Analytics State
   const [analyticsData, setAnalyticsData] = useState(null);
@@ -595,6 +607,31 @@ export const AdminDashboard = () => {
       setStudents(prev => prev.map(s => s.id === userId ? { ...s, isBanned: !currentStatus } : s));
     } catch (err) {
       alert("Failed to update ban status: " + (err.message || "Unknown error"));
+    }
+  };
+
+  const handleDeleteStudentProfile = async (student) => {
+    const name = student.studentProfile?.fullName || student.email || 'this student';
+    const rollNo = student.studentProfile?.rollNumber ? ` (Roll: ${student.studentProfile.rollNumber})` : '';
+    if (!window.confirm(
+      `⚠️ Delete student profile for ${name}${rollNo}?\n\n` +
+      `This will permanently remove:\n` +
+      `• Their student profile (name, roll no, batch, branch)\n` +
+      `• All reviews they submitted\n` +
+      `• All reviews written about them\n` +
+      `• All batch change requests\n\n` +
+      `Their login account will be preserved — they will be prompted to re-complete onboarding.\n\n` +
+      `This action CANNOT be undone.`
+    )) return;
+
+    try {
+      await api.deleteStudentProfile(student.id);
+      setStudents(prev => prev.map(s =>
+        s.id === student.id ? { ...s, studentProfile: null, isProfileComplete: false } : s
+      ));
+      alert(`✅ Profile deleted for ${name}. Their account is preserved.`);
+    } catch (err) {
+      alert("Failed to delete student profile: " + (err.message || "Unknown error"));
     }
   };
 
@@ -1734,9 +1771,21 @@ export const AdminDashboard = () => {
                           <span className="badge" style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0' }}><CheckCircle2 size={12}/> Active</span>
                         )}
                       </div>
-                      <div>
-                        <button className="btn btn-secondary btn-sm" style={{ minWidth: '100px', borderColor: student.isBanned ? '#bbf7d0' : '#fecaca', color: student.isBanned ? '#166534' : '#b91c1c' }} onClick={() => handleBanToggle(student.id, student.isBanned)}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          style={{ minWidth: '100px', borderColor: student.isBanned ? '#bbf7d0' : '#fecaca', color: student.isBanned ? '#166534' : '#b91c1c' }}
+                          onClick={() => handleBanToggle(student.id, student.isBanned)}
+                        >
                           {student.isBanned ? 'Unban User' : 'Ban User'}
+                        </button>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          style={{ minWidth: '100px', borderColor: '#fecaca', color: '#b91c1c', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                          onClick={() => handleDeleteStudentProfile(student)}
+                          title="Permanently delete this student's profile and all their data"
+                        >
+                          <Trash2 size={12} /> Delete Profile
                         </button>
                       </div>
                     </div>
