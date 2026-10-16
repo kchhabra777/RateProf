@@ -14,7 +14,6 @@ import {
   CheckCircle2,
   RefreshCw,
   Clock,
-  Sparkles,
   ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -26,7 +25,6 @@ export const ChangePasswordModal = ({ isOpen, onClose }) => {
 
   const [step, setStep] = useState(1); // 1: Send Code, 2: Enter Code & New Password, 3: Success
   const [otp, setOtp] = useState('');
-  const [devOtpNotice, setDevOtpNotice] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -43,7 +41,6 @@ export const ChangePasswordModal = ({ isOpen, onClose }) => {
     if (isOpen) {
       setStep(1);
       setOtp('');
-      setDevOtpNotice('');
       setNewPassword('');
       setConfirmPassword('');
       setError('');
@@ -67,13 +64,7 @@ export const ChangePasswordModal = ({ isOpen, onClose }) => {
     setLoading(true);
     try {
       const res = await api.changePasswordSendOtp();
-      if (res.otp) {
-        setOtp(res.otp);
-        setDevOtpNotice(res.otp);
-        toast.success(`Verification code generated: ${res.otp}`);
-      } else {
-        toast.success(res.message || 'Verification code sent to your email!');
-      }
+      toast.success(res.message || 'Verification code sent to your email!');
       setStep(2);
       setResendCooldown(60);
     } catch (err) {
@@ -90,13 +81,7 @@ export const ChangePasswordModal = ({ isOpen, onClose }) => {
     setResending(true);
     try {
       const res = await api.changePasswordSendOtp();
-      if (res.otp) {
-        setOtp(res.otp);
-        setDevOtpNotice(res.otp);
-        toast.success(`New code generated: ${res.otp}`);
-      } else {
-        toast.success(res.message || 'New verification code sent!');
-      }
+      toast.success(res.message || 'New verification code sent to your email!');
       setResendCooldown(60);
     } catch (err) {
       setError(err.message || 'Failed to resend code.');
@@ -383,23 +368,22 @@ export const ChangePasswordModal = ({ isOpen, onClose }) => {
           {/* STEP 2: Enter Code & Set New Password */}
           {step === 2 && (
             <form onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {devOtpNotice && (
-                <div style={{
-                  padding: '9px 12px',
-                  background: '#eff6ff',
-                  border: '1px solid #bfdbfe',
-                  borderRadius: '10px',
-                  color: '#1d4ed8',
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <Sparkles size={15} style={{ flexShrink: 0, color: '#2563eb' }} />
-                  <span>Verification code <strong>{devOtpNotice}</strong> has been auto-filled for you.</span>
-                </div>
-              )}
+              {/* Email sent notice */}
+              <div style={{
+                padding: '9px 12px',
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: '10px',
+                color: '#166534',
+                fontSize: '12px',
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <Mail size={15} style={{ flexShrink: 0, color: '#16a34a' }} />
+                <span>A 6-digit verification code has been sent to <strong>{user?.email}</strong>. Check your inbox.</span>
+              </div>
 
               {/* 6-Digit Code */}
               <div>
