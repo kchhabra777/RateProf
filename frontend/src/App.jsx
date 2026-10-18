@@ -1,7 +1,8 @@
+import { ScrollToTopButton } from './components/ui/ScrollToTopButton';
 import CloudLoader from './components/ui/quantum-cloud-loader';
 import { Marquee } from './components/ui/marquee';
 import { TAG_THEMES } from './lib/tagTheme';
-import React, { useState, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useAuth } from './context/AuthContext';
 import { AuthPage } from './pages/AuthPage';
 import { Navbar } from './components/Navbar';
@@ -18,65 +19,97 @@ const PublicTeacherProfile = lazy(() => import('./pages/PublicTeacherProfile').t
 export function App() {
   const { user, loading, logout } = useAuth();
   const [currentView, setCurrentView] = useState('home');
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+
+  // Synchronize browser history (top back/forward arrow navigation buttons)
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleGoHome = () => {
+    if (window.location.pathname !== '/') {
+      window.history.pushState({ appNavigation: true, view: 'directory' }, '', '/');
+      setCurrentPath('/');
+    }
+    setCurrentView('home');
+    window.dispatchEvent(new CustomEvent('rateprof:navigate-home'));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Handle public teacher profiles (e.g. /teacher/123 or /teacher/dr-anjula-mehto)
-  const teacherMatch = window.location.pathname.match(/^\/teacher\/([^/]+)/);
+  const teacherMatch = currentPath.match(/^\/teacher\/([^/]+)/);
   if (teacherMatch) {
     const teacherIdentifier = decodeURIComponent(teacherMatch[1]);
     return (
-      <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#030712' }}><CloudLoader /></div>}>
-        <PublicTeacherProfile
-          teacherId={teacherIdentifier}
-          onBack={() => window.location.href = '/'}
-          onLoginClick={() => window.location.href = '/'}
-        />
-      </Suspense>
+      <div className="app-container">
+        <Navbar currentView={currentView} setCurrentView={setCurrentView} onGoHome={handleGoHome} />
+        <Suspense fallback={<div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#030712' }}><CloudLoader /></div>}>
+          <PublicTeacherProfile
+            teacherId={teacherIdentifier}
+            onBack={handleGoHome}
+            onLoginClick={handleGoHome}
+          />
+        </Suspense>
+        <ScrollToTopButton />
+      </div>
     );
   }
 
-  if (window.location.pathname === '/roadmap') {
+  if (currentPath === '/roadmap') {
     return (
-      <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#030712' }}><CloudLoader /></div>}>
-        <Roadmap onBack={() => window.location.href = '/'} />
-      </Suspense>
+      <div className="app-container">
+        <Navbar currentView={currentView} setCurrentView={setCurrentView} onGoHome={handleGoHome} />
+        <Suspense fallback={<div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#030712' }}><CloudLoader /></div>}>
+          <Roadmap onBack={handleGoHome} />
+        </Suspense>
+        <ScrollToTopButton />
+      </div>
     );
   }
 
-  if (window.location.pathname === '/marquee') {
+  if (currentPath === '/marquee') {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#030712', color: '#fff', padding: '30px' }}>
-        <h2 style={{ fontSize: '26px', fontWeight: 800, marginBottom: '8px', letterSpacing: '-0.5px' }}>Campus Community Tags Marquee</h2>
-        <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '32px' }}>Infinite auto-scrolling with fade mask & pause on hover</p>
-        
-        <div style={{ width: '100%', maxWidth: '850px', padding: '24px 0', borderTop: '1px solid rgba(255,255,255,0.1)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-          <Marquee pauseOnHover={true} duration={22}>
-            {Object.values(TAG_THEMES).map(theme => (
-              <span 
-                key={theme.name}
-                style={{ 
-                  margin: '0 16px', 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  gap: '6px', 
-                  fontSize: '14px', 
-                  fontWeight: 600, 
-                  color: theme.color, 
-                  padding: '6px 16px', 
-                  borderRadius: '20px', 
-                  background: theme.bg, 
-                  border: `1px solid ${theme.borderSubtle}`
-                }}
-              >
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: theme.border }} />
-                #{theme.name}
-              </span>
-            ))}
-          </Marquee>
+      <div className="app-container">
+        <Navbar currentView={currentView} setCurrentView={setCurrentView} onGoHome={handleGoHome} />
+        <div style={{ flex: 1, minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#030712', color: '#fff', padding: '30px' }}>
+          <h2 style={{ fontSize: '26px', fontWeight: 800, marginBottom: '8px', letterSpacing: '-0.5px' }}>Campus Community Tags Marquee</h2>
+          <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '32px' }}>Infinite auto-scrolling with fade mask & pause on hover</p>
+          
+          <div style={{ width: '100%', maxWidth: '850px', padding: '24px 0', borderTop: '1px solid rgba(255,255,255,0.1)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+            <Marquee pauseOnHover={true} duration={22}>
+              {Object.values(TAG_THEMES).map(theme => (
+                <span 
+                  key={theme.name}
+                  style={{ 
+                    margin: '0 16px', 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: '6px', 
+                    fontSize: '14px', 
+                    fontWeight: 600, 
+                    color: theme.color, 
+                    padding: '6px 16px', 
+                    borderRadius: '20px', 
+                    background: theme.bg, 
+                    border: `1px solid ${theme.borderSubtle}`
+                  }}
+                >
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: theme.border }} />
+                  #{theme.name}
+                </span>
+              ))}
+            </Marquee>
+          </div>
+
+          <button onClick={handleGoHome} className="btn btn-secondary btn-sm" style={{ marginTop: '32px', cursor: 'pointer' }}>
+            ← Back to Dashboard
+          </button>
         </div>
-
-        <a href="/" style={{ marginTop: '32px', fontSize: '14px', color: '#38bdf8', textDecoration: 'underline', cursor: 'pointer' }}>
-          ← Back to Dashboard
-        </a>
+        <ScrollToTopButton />
       </div>
     );
   }
@@ -114,16 +147,17 @@ export function App() {
   // Logged in with complete profile
   return (
     <div className="app-container">
-      <Navbar currentView={currentView} setCurrentView={setCurrentView} />
+      <Navbar currentView={currentView} setCurrentView={setCurrentView} onGoHome={handleGoHome} />
       <Suspense fallback={<div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CloudLoader /></div>}>
         {user.role === 'ADMIN' ? (
-          <AdminDashboard />
+          <AdminDashboard onGoHome={handleGoHome} />
         ) : user.role === 'STUDENT' ? (
-          <StudentDashboard />
+          <StudentDashboard onGoHome={handleGoHome} />
         ) : (
-          <TeacherDashboard />
+          <TeacherDashboard onGoHome={handleGoHome} />
         )}
       </Suspense>
+      <ScrollToTopButton />
     </div>
   );
 }

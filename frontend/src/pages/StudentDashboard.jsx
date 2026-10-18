@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api, OFFICIAL_ELECTIVES, getElectiveName, isFreeElective } from '../api/client';
 import { TeacherCard } from '../components/TeacherCard';
@@ -47,7 +47,7 @@ import { KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 
 
-export const StudentDashboard = () => {
+export const StudentDashboard = ({ onGoHome }) => {
   const { user, onboardStudent, setUser } = useAuth();
   const [tab, setTab] = useState('eligible'); // 'eligible' | 'all'
   const [mobileTab, setMobileTab] = useState('directory'); // 'directory' | 'feed' | 'leaderboard' | 'profile'
@@ -86,6 +86,27 @@ export const StudentDashboard = () => {
   const [selectedTeacherReviews, setSelectedTeacherReviews] = useState([]);
   const [selectedTeacherRatings, setSelectedTeacherRatings] = useState(null);
   const [selectedTeacherTags, setSelectedTeacherTags] = useState(null);
+
+  const displayTeacherTagStats = useMemo(() => {
+    if (!selectedTeacherTags?.stats) return [];
+    const standardTags = [
+      'Clear Explanations',
+      'Approachable',
+      'Engaging Lectures',
+      'Heavy Workload',
+      'Tough Grader'
+    ];
+    const map = new Map(selectedTeacherTags.stats.map(s => [s.name, s]));
+    standardTags.forEach(name => {
+      if (!map.has(name)) {
+        map.set(name, { name, count: 0, percentage: 0 });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => {
+      if (b.percentage !== a.percentage) return b.percentage - a.percentage;
+      return standardTags.indexOf(a.name) - standardTags.indexOf(b.name);
+    });
+  }, [selectedTeacherTags]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewsPage, setReviewsPage] = useState(1);
   const [hasMoreReviews, setHasMoreReviews] = useState(false);
@@ -285,12 +306,37 @@ export const StudentDashboard = () => {
 
   // Back to directory that keeps browser history in sync
   const handleBackToDirectory = () => {
-    if (window.history.state?.appNavigation) {
-      window.history.back();
-    } else {
-      setSelectedTeacher(null);
+    setSelectedTeacher(null);
+    if (window.location.pathname !== '/') {
+      window.history.pushState({ appNavigation: true, view: 'directory' }, '', '/');
     }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // Return to homepage whenever the RateProf logo / Home action is triggered
+  useEffect(() => {
+    const handleHomeReset = () => {
+      setSelectedTeacher(null);
+      setSearchQuery('');
+      setMobileTab('directory');
+      setTab('eligible');
+      setIsAIInsightsOpen(false);
+      setReviewingTeacher(null);
+      setSuggestTeacher(null);
+      setSharingTeacher(null);
+      setIsChangeBatchOpen(false);
+      setIsCmdMenuOpen(false);
+      setShowChangePassword(false);
+      setIsElectiveModalOpen(false);
+      if (window.location.pathname !== '/') {
+        window.history.pushState({ appNavigation: true, view: 'directory' }, '', '/');
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.addEventListener('rateprof:navigate-home', handleHomeReset);
+    return () => window.removeEventListener('rateprof:navigate-home', handleHomeReset);
+  }, []);
 
   const openAIInsights = () => {
     window.history.pushState({ appNavigation: true, view: 'ai_insights' }, '');
@@ -320,9 +366,11 @@ export const StudentDashboard = () => {
     setIsChangeBatchOpen(true);
   };
 
-  // Browser Back Button & Swipe Back interceptor (prevents leaving the website)
+  // Browser Back & Forward Buttons (top arrow navigation)
   useEffect(() => {
-    const handlePopState = () => {
+    const handlePopState = (event) => {
+      const state = event?.state;
+
       // 1. Close open modals first
       if (isAIInsightsOpen) {
         setIsAIInsightsOpen(false);
@@ -349,15 +397,35 @@ export const StudentDashboard = () => {
         return;
       }
 
-      // 2. If viewing a teacher's reviews, return to directory
-      if (selectedTeacher) {
+      // 2. Browser forward navigation to teacher
+      if (state?.view === 'teacher' && state?.id) {
+        const found = state.teacher ||
+          allTeachers.find(t => (t.id || t.userId) === state.id) ||
+          eligibleTeachers.find(t => (t.id || t.userId) === state.id);
+        if (found) {
+          handleViewReviews(found, true);
+        } else {
+          handleViewReviews({ id: state.id, userId: state.id, fullName: 'Faculty Profile' }, true);
+        }
+        return;
+      }
+
+      // 3. Browser navigation to tab
+      if (state?.view === 'tab' && state?.tab) {
+        setMobileTab(state.tab);
         setSelectedTeacher(null);
         return;
       }
 
-      // 3. If in another tab, return to main directory
-      if (mobileTab !== 'directory') {
-        setMobileTab('directory');
+      // 4. Browser back navigation: returning to directory / home
+      if (!state || state.view === 'directory' || window.location.pathname === '/') {
+        if (selectedTeacher) {
+          setSelectedTeacher(null);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        if (mobileTab !== 'directory') {
+          setMobileTab('directory');
+        }
         return;
       }
     };
@@ -372,16 +440,23 @@ export const StudentDashboard = () => {
     isChangeBatchOpen,
     isCmdMenuOpen,
     selectedTeacher,
-    mobileTab
+    mobileTab,
+    allTeachers,
+    eligibleTeachers
   ]);
 
   const handleViewReviews = async (teacher, isSilentRefresh = false) => {
     setSelectedTeacher(teacher);
     if (!isSilentRefresh) {
-      window.history.pushState({ appNavigation: true, view: 'teacher', id: teacher.id || teacher.userId }, '');
+      window.history.pushState(
+        { appNavigation: true, view: 'teacher', id: teacher.id || teacher.userId, teacher },
+        '',
+        `/teacher/${encodeURIComponent(teacher.id || teacher.userId)}`
+      );
       setReviewsLoading(true);
       setSelectedTeacherTags(null);
       setReviewsPage(1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     const teacherId = teacher.userId || teacher.user?.id || teacher.id;
     try {
@@ -1140,16 +1215,16 @@ export const StudentDashboard = () => {
                       ? `${selectedTeacherTags.needed} more review${selectedTeacherTags.needed > 1 ? 's' : ''} needed to unlock tag insights.`
                       : 'No student tags submitted for this teacher yet.'}
                   </div>
-                ) : selectedTeacherTags.stats?.length === 0 ? (
+                ) : displayTeacherTagStats.length === 0 ? (
                   <div style={{ color: 'var(--text-muted)', fontSize: '13px', fontStyle: 'italic', marginTop: '12px' }}>
                     No community tags recorded for this faculty member yet.
                   </div>
                 ) : (
-                  <div style={{ width: '100%', height: 180 }}>
+                  <div style={{ width: '100%', height: Math.max(210, displayTeacherTagStats.length * 40) }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         layout="vertical"
-                        data={selectedTeacherTags.stats}
+                        data={displayTeacherTagStats}
                         margin={{ top: 0, right: 40, left: 0, bottom: 0 }}
                       >
                         <XAxis type="number" hide domain={[0, 100]} />
@@ -1186,7 +1261,7 @@ export const StudentDashboard = () => {
                           background={{ fill: 'var(--bg-card-subtle)', radius: [6, 6, 6, 6] }}
                           label={{ position: 'right', fill: 'var(--text-primary)', fontSize: 12, fontWeight: 700, formatter: (val) => `${val}%` }}
                         >
-                          {selectedTeacherTags.stats.map((entry, index) => {
+                          {displayTeacherTagStats.map((entry, index) => {
                             const theme = getTagTheme(entry.name);
                             return (
                               <Cell 

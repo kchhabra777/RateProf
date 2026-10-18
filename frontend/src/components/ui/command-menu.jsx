@@ -22,34 +22,6 @@ export function CommandMenu({
     }
   }, [isOpen]);
 
-  // Keyboard navigation & global shortcut
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (!isOpen) return;
-
-      if (e.key === "Escape") {
-        onClose();
-      } else if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setSelectedIndex((prev) => Math.min(prev + 1, allResults.length - 1));
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setSelectedIndex((prev) => Math.max(prev - 1, 0));
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        if (allResults[selectedIndex]) {
-          allResults[selectedIndex].action();
-          onClose();
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, selectedIndex, query]);
-
-  if (!isOpen) return null;
-
   const normalizedQuery = query.toLowerCase().trim();
 
   // Filter teachers
@@ -98,6 +70,34 @@ export function CommandMenu({
   );
 
   const allResults = [...matchedTeachers, ...matchedActions];
+
+  // Keyboard navigation & global shortcut
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!isOpen) return;
+
+      if (e.key === "Escape") {
+        onClose();
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedIndex((prev) => Math.min(prev + 1, Math.max(0, allResults.length - 1)));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedIndex((prev) => Math.max(prev - 1, 0));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (allResults[selectedIndex]) {
+          allResults[selectedIndex].action();
+          onClose();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, selectedIndex, allResults, onClose]);
+
+  if (!isOpen) return null;
 
   return createPortal(
     <div

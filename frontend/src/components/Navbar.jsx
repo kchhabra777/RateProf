@@ -4,15 +4,44 @@ import { useTheme } from '../hooks/useTheme';
 import { LogOut, User, Award, Sun, Moon, KeyRound } from 'lucide-react';
 import { ChangePasswordModal } from './ChangePasswordModal';
 
-export const Navbar = ({ currentView, setCurrentView }) => {
+export const Navbar = ({ currentView, setCurrentView, onGoHome }) => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [showChangePassword, setShowChangePassword] = useState(false);
 
+  const handleBrandClick = (e) => {
+    if (e) e.preventDefault();
+    if (onGoHome) {
+      onGoHome();
+    } else {
+      if (setCurrentView) setCurrentView('home');
+      window.dispatchEvent(new CustomEvent('rateprof:navigate-home'));
+      if (window.location.pathname !== '/') {
+        window.history.pushState({ appNavigation: true, view: 'directory' }, '', '/');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   return (
     <header className="navbar" style={{ transition: 'background-color 0.2s ease, border-color 0.2s ease' }}>
       <div className="navbar-inner">
-        <div className="brand-logo" style={{ cursor: 'pointer' }} onClick={() => setCurrentView('home')}>
+        <div
+          className="brand-logo"
+          style={{ cursor: 'pointer', userSelect: 'none' }}
+          onClick={handleBrandClick}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleBrandClick(e);
+            }
+          }}
+          title="Return to RateProf Homepage"
+          aria-label="RateProf Homepage"
+        >
           <img
             src="/tiet-navbar-logo.png"
             alt="Thapar Institute Logo"

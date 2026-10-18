@@ -241,12 +241,35 @@ export const getPublicTags = async (req, res) => {
 export const getTeacherTagStats = async (req, res) => {
     try {
         const { teacherId } = req.params;
-        const reviews = await prisma.review.findMany({
-            where: { revieweeId: teacherId },
-            select: { tags: true }
-        });
+        const [reviews, dbTags] = await Promise.all([
+            prisma.review.findMany({
+                where: { revieweeId: teacherId },
+                select: { tags: true }
+            }),
+            prisma.communityTag.findMany({
+                orderBy: { id: "asc" },
+                select: { name: true }
+            }).catch(() => [])
+        ]);
         
+        const standardTags = [
+            "Clear Explanations",
+            "Approachable",
+            "Engaging Lectures",
+            "Heavy Workload",
+            "Tough Grader"
+        ];
+
+        const allTagNames = Array.from(new Set([
+            ...standardTags,
+            ...(dbTags || []).map(t => t.name)
+        ]));
+
         const counts = {};
+        allTagNames.forEach(t => {
+            counts[t] = 0;
+        });
+
         let totalTags = 0;
         
         reviews.forEach(r => {
@@ -263,9 +286,12 @@ export const getTeacherTagStats = async (req, res) => {
             name,
             count,
             percentage: totalTags > 0 ? Math.round((count / totalTags) * 100) : 0
-        })).sort((a, b) => b.count - a.count);
+        })).sort((a, b) => {
+            if (b.count !== a.count) return b.count - a.count;
+            return allTagNames.indexOf(a.name) - allTagNames.indexOf(b.name);
+        });
         
-                const totalReviewsWithTags = reviews.filter(r => r.tags && r.tags.length > 0).length;
+        const totalReviewsWithTags = reviews.filter(r => r.tags && r.tags.length > 0).length;
         const MIN_REVIEWS_FOR_TAGS = 5;
         const sufficientData = totalReviewsWithTags >= MIN_REVIEWS_FOR_TAGS;
         const needed = Math.max(0, MIN_REVIEWS_FOR_TAGS - totalReviewsWithTags);

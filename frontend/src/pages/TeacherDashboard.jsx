@@ -19,8 +19,19 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-export const TeacherDashboard = () => {
+export const TeacherDashboard = ({ onGoHome }) => {
   const { user } = useAuth();
+
+  useEffect(() => {
+    const handleHomeReset = () => {
+      setShowAddCourse(false);
+      setEditingOffering(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    window.addEventListener('rateprof:navigate-home', handleHomeReset);
+    return () => window.removeEventListener('rateprof:navigate-home', handleHomeReset);
+  }, []);
+
   const [ratings, setRatings] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [offerings, setOfferings] = useState([]);

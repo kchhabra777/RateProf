@@ -1,57 +1,50 @@
 # LinkedIn post — RateProf
 
-> Post this **after** the critical fixes in AUDIT.md §1 are deployed. A LinkedIn post will send traffic to the site.
+> Post this **after** the security fixes are deployed. The post will send traffic to the site.
 > Tag: Robin Singla, Haritika, Dr. Anjula Mehto, Thapar Institute of Engineering & Technology.
-> Attach: 3–4 real screenshots (teacher page, review form, tag breakdown, admin moderation). Skip the logo/hero image.
+> Replace `[GOOGLE FORM LINK]` before posting. In the form settings, turn **off** "Collect email addresses" and don't ask for names or roll numbers, so the post's anonymity promise is true.
+> Attach 2–3 real screenshots (teacher page, review form). Skip the logo/hero image.
 
 ---
 
-## Version A — main post (~230 words)
+## Main post (~250 words)
 
-Every semester at Thapar, the same question goes round every hostel group chat:
+Before you pick a professor for a course, a research project or a thesis, you usually ask one or two seniors.
 
-"Who should I take for this elective?"
+That's one or two opinions. They could be from a great semester or a terrible one. You don't hear from the ten other students who worked with the same person.
 
-The answers are scattered, outdated, and usually from one senior who had a bad week. So for our Software Engineering project (UCS503), we built **RateProf**: a place where Thapar students can leave honest, structured feedback on faculty and courses.
+That's the gap we're trying to fill with **RateProf**, a feedback platform we're building at Thapar (TIET).
 
-A few decisions we're proud of:
+The idea is simple:
+→ **Students** can see how a teacher actually teaches, grades and supports students before choosing to work with them. Want to do research under Professor X? Read what the people who already did have to say.
+→ **Teachers** get honest, structured feedback they rarely hear directly, and they can respond to it.
+→ **The university** gets a clear picture of what's working in classrooms and what isn't.
 
-→ **Only students who were actually taught can review.** We parsed the official timetables for every year into batch/branch/course data. If you weren't in that section, you can't review that professor for that course.
-→ **One review per course per 21 days**, enforced in a database transaction, so spamming doesn't work even with parallel requests.
-→ **Recent reviews count more.** Ratings are time-weighted, and there's a separate "this semester" score, because teaching changes.
-→ **Faculty can reply.** Feedback should be a conversation, not a wall of complaints.
+None of this works unless students feel safe being honest. So anonymity is the core of the design: reviews are not shown with names, only verified Thapar students can post, and you can only review someone who actually taught you.
 
-The biggest lesson wasn't technical. It was trust. Anonymity, eligibility checks and moderation took far more of our time than the UI did, and they're the reason anyone would believe a rating on the site.
+**Here's where we need your help.** A platform like this is only as useful as the experiences in it, and right now we're just getting started. If you've studied under, or worked with, a faculty member at Thapar, please share your experience through this short form. It doesn't ask who you are.
 
-Built with React, Node.js microservices, PostgreSQL and Prisma, plus Gemini for summarising reviews.
+👉 [GOOGLE FORM LINK]
 
-Huge thanks to my teammates Robin Singla and Haritika, and to our mentor Dr. Anjula Mehto for pushing us to treat this like a real product.
+Every response helps the next student make a better choice.
 
-If you're at Thapar, try it at rateprof.tech and tell us what's broken. We're listening.
+Built by Robin Singla, Haritika and me as our Software Engineering project, with guidance from Dr. Anjula Mehto.
 
-#Thapar #TIET #SoftwareEngineering #StudentProjects #WebDevelopment
-
----
-
-## Version B — short (~90 words)
-
-"Who should I take for this elective?" is the most-asked question at Thapar every semester.
-
-For our UCS503 Software Engineering project, Robin Singla, Haritika and I built **RateProf**, verified faculty feedback for TIET students.
-
-You can only review a professor if the official timetable shows they taught your batch. One review per course every 21 days. Recent semesters weigh more. Faculty can reply.
-
-Thanks to Dr. Anjula Mehto for mentoring us.
-
-Thapar folks: rateprof.tech. Tell us what to fix.
-
-#Thapar #TIET #SoftwareEngineering
+#Thapar #TIET #StudentVoice #HigherEducation #Feedback
 
 ---
 
-## Writing notes (why it's written this way)
-- Opens with a real student problem, not "Excited to announce 🚀".
-- Every claim is something the code actually does today. It doesn't say "AI-powered", "cutting-edge", "1000s of users" or "official TIET portal".
-- Says "built by students", so it can't be mistaken for an institute-endorsed system.
-- The "lesson learned" paragraph is what makes people comment; keep it in your own words if you edit.
-- Post Tue–Thu, 9–11 AM IST. Reply to every comment in the first hour.
+## Short version (~110 words)
+
+Want to do research under a professor? Right now you ask one senior and hope their experience is typical.
+
+**RateProf** is our attempt to fix that at Thapar: anonymous, verified feedback on how faculty teach, grade and mentor. It helps students choose, gives teachers honest feedback they can respond to, and shows the university what's working.
+
+Anonymity is non-negotiable: no names on reviews, and only students who were actually taught can post.
+
+We're collecting the first round of experiences now. If you've studied or worked with a Thapar faculty member, it takes a few minutes and doesn't ask who you are:
+👉 [GOOGLE FORM LINK]
+
+Built with Robin Singla and Haritika, mentored by Dr. Anjula Mehto.
+
+#Thapar #TIET #StudentVoice

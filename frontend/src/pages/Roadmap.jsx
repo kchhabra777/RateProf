@@ -33,21 +33,19 @@ const timelineData = [
 
 export function Roadmap({ onBack }) {
   return (
-    <div className="app-container">
-      <div className="navbar">
-        <div className="navbar-inner" style={{ justifyContent: 'flex-start', gap: '24px' }}>
-          <button className="btn btn-secondary btn-sm" onClick={onBack}>
-            <ArrowLeft size={16} />
-            <span>Back</span>
-          </button>
-          <div>
-            <h1 className="brand-title">Product Roadmap</h1>
-            <span className="brand-subtitle">Upcoming Features & Improvements</span>
-          </div>
-        </div>
+    <div style={{ flex: 1, width: '100%', minHeight: '80vh' }}>
+      <div style={{ maxWidth: '800px', margin: '20px auto 0', padding: '0 20px' }}>
+        <button className="btn btn-secondary btn-sm" onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <ArrowLeft size={16} />
+          <span>Back to Homepage</span>
+        </button>
       </div>
-      
-      <main className="main-content" style={{ maxWidth: '800px', padding: '40px 20px' }}>
+
+      <main className="main-content" style={{ maxWidth: '800px', padding: '20px 20px 40px' }}>
+        <div style={{ marginBottom: '24px' }}>
+          <h1 className="brand-title" style={{ fontSize: '28px', marginBottom: '4px' }}>Product Roadmap</h1>
+          <span className="brand-subtitle" style={{ fontSize: '13px' }}>Upcoming Features & Improvements</span>
+        </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           {timelineData.map((item) => {
             const Icon = item.icon;

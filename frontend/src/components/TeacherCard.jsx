@@ -159,16 +159,20 @@ export const TeacherCard = ({ teacher, ratings, onViewReviews, onWriteReview, on
       </div>
 
       {/* Courses Taught — grouped by course code and LTP, showing batches */}
-      <div style={{ flex: 1, marginBottom: '16px' }}>
+      <div style={{ flex: 1, marginBottom: '16px', minHeight: '52px', display: 'flex', flexDirection: 'column' }}>
         <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
           <BookOpen size={12} />
           <span>Courses Taught:</span>
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
           {(() => {
             const raw = (teacher.courses?.length > 0 ? teacher.courses : teacher.offerings) || [];
             if (raw.length === 0) {
-              return <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>No courses registered yet</span>;
+              return (
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic', padding: '2px 0' }}>
+                  No courses registered yet
+                </span>
+              );
             }
             
             // Group by unique courseCode and aggregate LTPs & batches
@@ -192,7 +196,9 @@ export const TeacherCard = ({ teacher, ratings, onViewReviews, onWriteReview, on
               if (c.batchTaught && c.batchTaught.toUpperCase() !== 'ALL') {
                 c.batchTaught.split(',').forEach(b => {
                   const tb = b.trim().toUpperCase();
-                  if (tb && tb !== 'ALL') courseMap[code].batches.add(tb);
+                  if (tb && tb !== 'ALL' && tb !== 'ELECTIVE' && !tb.includes('ELECTIVE')) {
+                    courseMap[code].batches.add(tb);
+                  }
                 });
               }
             });
@@ -215,21 +221,61 @@ export const TeacherCard = ({ teacher, ratings, onViewReviews, onWriteReview, on
             };
             
             const grouped = Object.values(courseMap);
-            
-            return grouped.map((c, i) => {
-              const ltpStr = formatLtps(c.ltpSet);
-              const batchStr = formatBatches(c.batches);
-              return (
-                <span key={i} className="badge badge-neutral" style={{ fontSize: '11.5px', lineHeight: '1.4' }} title={c.courseName ? `${c.courseCode}: ${c.courseName}` : c.courseCode}>
-                  {c.courseCode}{c.courseName && c.courseName.toUpperCase() !== c.courseCode ? ` - ${c.courseName}` : ''} · {ltpStr}
-                  {batchStr && (
-                    <span style={{ opacity: 0.8, marginLeft: '4px' }}>
-                      ({batchStr})
+            const MAX_VISIBLE = 3;
+            const visibleCourses = grouped.slice(0, MAX_VISIBLE);
+            const remainingCount = grouped.length - MAX_VISIBLE;
+            const remainingCoursesTooltip = remainingCount > 0 
+              ? grouped.slice(MAX_VISIBLE).map(c => c.courseName ? `${c.courseCode}: ${c.courseName}` : c.courseCode).join('\n')
+              : '';
+
+            return (
+              <>
+                {visibleCourses.map((c, i) => {
+                  const ltpStr = formatLtps(c.ltpSet);
+                  const batchStr = formatBatches(c.batches);
+                  return (
+                    <span 
+                      key={i} 
+                      className="badge badge-neutral" 
+                      style={{ 
+                        fontSize: '11.5px', 
+                        lineHeight: '1.4',
+                        maxWidth: '100%',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }} 
+                      title={c.courseName ? `${c.courseCode}: ${c.courseName}` : c.courseCode}
+                    >
+                      <span style={{ fontWeight: 600 }}>{c.courseCode}</span>
+                      {c.courseName && c.courseName.toUpperCase() !== c.courseCode ? ` - ${c.courseName}` : ''} · {ltpStr}
+                      {batchStr && (
+                        <span style={{ opacity: 0.8, marginLeft: '4px' }}>
+                          ({batchStr})
+                        </span>
+                      )}
                     </span>
-                  )}
-                </span>
-              );
-            });
+                  );
+                })}
+                {remainingCount > 0 && (
+                  <span 
+                    className="badge badge-neutral" 
+                    style={{ 
+                      fontSize: '11px', 
+                      fontWeight: 700, 
+                      lineHeight: '1.4', 
+                      cursor: 'pointer',
+                      background: 'rgba(59, 130, 246, 0.08)',
+                      color: '#2563eb',
+                      border: '1px solid rgba(59, 130, 246, 0.25)' 
+                    }} 
+                    title={`Additional courses:\n${remainingCoursesTooltip}`}
+                  >
+                    +{remainingCount} more
+                  </span>
+                )}
+              </>
+            );
           })()}
         </div>
       </div>

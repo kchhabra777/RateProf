@@ -4,7 +4,7 @@ import {
 } from 'recharts';
 import { Tag, Sparkles } from 'lucide-react';
 import { TeacherAIInsights } from '../components/TeacherAIInsights';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { StarRating } from '../components/StarRating';
@@ -142,6 +142,27 @@ export const AdminDashboard = ({ onGoHome }) => {
   const [teacherRatings, setTeacherRatings] = useState(null);
   const [teacherCourses, setTeacherCourses] = useState([]);
   const [selectedTeacherTags, setSelectedTeacherTags] = useState(null);
+
+  const displayTeacherTagStats = useMemo(() => {
+    if (!selectedTeacherTags?.stats) return [];
+    const standardTags = [
+      'Clear Explanations',
+      'Approachable',
+      'Engaging Lectures',
+      'Heavy Workload',
+      'Tough Grader'
+    ];
+    const map = new Map(selectedTeacherTags.stats.map(s => [s.name, s]));
+    standardTags.forEach(name => {
+      if (!map.has(name)) {
+        map.set(name, { name, count: 0, percentage: 0 });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => {
+      if (b.percentage !== a.percentage) return b.percentage - a.percentage;
+      return standardTags.indexOf(a.name) - standardTags.indexOf(b.name);
+    });
+  }, [selectedTeacherTags]);
   const [addingCourse, setAddingCourse] = useState(false);
   const [newCourse, setNewCourse] = useState({
     courseCode: '',
@@ -1497,7 +1518,7 @@ export const AdminDashboard = ({ onGoHome }) => {
                   ? `${selectedTeacherTags.needed} more review${selectedTeacherTags.needed > 1 ? 's' : ''} needed to unlock tag insights for this teacher.`
                   : 'No student tags submitted for this teacher yet.'}
               </div>
-            ) : selectedTeacherTags.stats?.length === 0 ? (
+            ) : displayTeacherTagStats.length === 0 ? (
               <div style={{ color: 'var(--text-muted)', fontSize: '14px', fontStyle: 'italic', marginTop: '12px' }}>
                 No community tags recorded for this faculty member yet.
               </div>
@@ -1506,7 +1527,7 @@ export const AdminDashboard = ({ onGoHome }) => {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     layout="vertical"
-                    data={selectedTeacherTags.stats}
+                    data={displayTeacherTagStats}
                     margin={{ top: 10, right: 40, left: 10, bottom: 0 }}
                   >
                     <defs>
@@ -1537,7 +1558,7 @@ export const AdminDashboard = ({ onGoHome }) => {
                       background={{ fill: 'rgba(255,255,255,0.04)', radius: [4, 4, 4, 4] }}
                       label={{ position: 'right', fill: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, formatter: (val) => `${val}%` }}
                     >
-                      {selectedTeacherTags.stats.map((entry, index) => (
+                      {displayTeacherTagStats.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill="url(#barGradient)" />
                       ))}
                     </Bar>

@@ -91,11 +91,14 @@ async function run() {
           || teachers[0];
 
         // Pick specific well-known faculty if available
-        if (elective.code === 'UCS532') { // Computer Vision
+        if (elective.code === 'UCS550') { // Network Defence
+          const jhb = teachers.find(t => t.fullName.includes('Jhilik'));
+          if (jhb) candidate = jhb;
+        } else if (elective.code === 'UCS532') { // Computer Vision
           const cvTeacher = teachers.find(t => t.fullName.includes('Mansi Sharma') || t.fullName.includes('Raikwar'));
           if (cvTeacher) candidate = cvTeacher;
-        } else if (elective.code === 'UCS534') { // Computer & Network Security
-          const secTeacher = teachers.find(t => t.fullName.includes('Neeraj Kumar') || t.fullName.includes('Sharad'));
+        } else if (elective.code === 'UCS534' || elective.code === 'UCS002') { // Computer & Network Security / Cyber Security
+          const secTeacher = teachers.find(t => t.fullName.includes('Sharad') || t.fullName.includes('Neeraj Kumar'));
           if (secTeacher) candidate = secTeacher;
         } else if (elective.code === 'UCS542') { // UI & UX
           const uiTeacher = teachers.find(t => t.fullName.includes('Vaishali') || t.fullName.includes('Nidhi Kalra'));
@@ -106,6 +109,15 @@ async function run() {
         } else if (elective.code === 'UPH064') { // Nano Science
           const phyTeacher = teachers.find(t => t.department.includes('Physics'));
           if (phyTeacher) candidate = phyTeacher;
+        } else if (elective.code.startsWith('UHU')) { // Humanities
+          const shss = teachers.find(t => t.fullName.includes('Humanities') || t.department.includes('Humanities'));
+          if (shss) candidate = shss;
+        } else if (elective.code.startsWith('UBT')) { // Biotechnology
+          const bt = teachers.find(t => t.fullName.includes('Biotechnology') || t.department.includes('Biotechnology'));
+          if (bt) candidate = bt;
+        } else if (elective.code.startsWith('UEN')) { // Environment / Civil
+          const cie = teachers.find(t => t.fullName.includes('Civil') || t.department.includes('Civil'));
+          if (cie) candidate = cie;
         }
 
         await pool.query(
