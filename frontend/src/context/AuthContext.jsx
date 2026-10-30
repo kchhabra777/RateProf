@@ -95,11 +95,22 @@ export const AuthProvider = ({ children }) => {
           if (email) {
             setAuthError('');
             console.log('[AuthContext] syncUser – calling syncClerkUser for:', email);
-            const data = await api.syncClerkUser({
+            const syncPayload = {
               email,
               fullName: clerkUser.fullName || `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim(),
               clerkId: clerkUser.id
-            });
+            };
+            let data;
+            try {
+              data = await api.syncClerkUser(syncPayload);
+            } catch (err) {
+              if (err.status !== 401) throw err;
+              // A saved campus_token that expired or was signed with a rotated secret must not end
+              // a valid Clerk session: drop it and retry, which sends the Clerk token instead.
+              localStorage.removeItem('campus_token');
+              setToken(null);
+              data = await api.syncClerkUser(syncPayload);
+            }
             console.log('[AuthContext] syncUser – syncClerkUser returned:', { userId: data.user?.id, role: data.user?.role, tokenPresent: !!data.token, tokenLength: data.token?.length });
             setUser(data.user);
             if (data.token) {
