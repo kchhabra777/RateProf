@@ -586,15 +586,9 @@ const ForgotPasswordForm = ({ onSwitchToLogin }) => {
         boxSizing: 'border-box',
       }}>
         <span>
-          Thapar Institute of Engineering & Technology
-          <br />
-          (Deemed to be University), Patiala
+          RateProf is an independent student project for TIET, Patiala.
+          It is not an official university website.
         </span>
-        <div style={{ display: 'flex', gap: '16px' }}>
-          <a href="#" style={{ color: '#9ca3af', textDecoration: 'none', fontWeight: 500 }}>Privacy</a>
-          <a href="#" style={{ color: '#9ca3af', textDecoration: 'none', fontWeight: 500 }}>Terms</a>
-          <a href="#" style={{ color: '#9ca3af', textDecoration: 'none', fontWeight: 500 }}>Help</a>
-        </div>
       </div>
     </div>
   );

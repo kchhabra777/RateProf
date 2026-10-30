@@ -8,7 +8,7 @@ import { ThaparProfileLink } from '../components/ThaparProfileLink';
 import { ShareProfileModal } from '../components/ShareProfileModal';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { getTeacherPhoto } from '../utils/teacherMedia';
+import { TeacherAvatar } from '../components/TeacherAvatar';
 
 export function PublicTeacherProfile({ teacherId, onBack, onLoginClick }) {
   const { user } = useAuth();
@@ -117,7 +117,6 @@ export function PublicTeacherProfile({ teacherId, onBack, onLoginClick }) {
 
   // "Dr. Anjula Mehto" -> "Anjula" for the call-to-action button
   const firstName = teacher.fullName.split(/\s+/).find(w => !/^(dr|prof|mr|mrs|ms)\.?$/i.test(w)) || teacher.fullName;
-  const avatar = getTeacherPhoto(teacher) || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.fullName)}&background=2563eb&color=fff&bold=true`;
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '24px 16px' }} className="fade-in">
@@ -144,30 +143,19 @@ export function PublicTeacherProfile({ teacherId, onBack, onLoginClick }) {
       {/* Professor Overview Card */}
       <div className="card" style={{ padding: '28px', marginBottom: '24px' }}>
         <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-          <div style={{
-            width: '180px',
-            height: '180px',
-            borderRadius: '50%',
-            padding: '4px',
-            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%)',
-            boxShadow: '0 16px 40px rgba(139, 92, 246, 0.4)',
-            flexShrink: 0
-          }}>
-            <img
-              src={avatar}
-              alt={teacher.fullName}
-              style={{ 
-                width: '100%', 
-                height: '100%', 
-                borderRadius: '50%', 
-                objectFit: 'cover',
-                border: '4px solid var(--bg-card)'
-              }}
-              onError={(e) => {
-                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.fullName)}&background=2563eb&color=fff&bold=true`;
-              }}
-            />
-          </div>
+          <TeacherAvatar
+            teacher={teacher}
+            style={{
+              width: '180px',
+              height: '180px',
+              borderRadius: '50%',
+              padding: '4px',
+              background: 'linear-gradient(135deg, #9f1515 0%, #d32f2f 50%, #fbd5d5 100%)',
+              boxShadow: '0 16px 36px rgba(183, 28, 28, 0.25)',
+              flexShrink: 0
+            }}
+            imgStyle={{ border: '4px solid var(--bg-card)' }}
+          />
           <div style={{ flex: 1, minWidth: '240px' }}>
             <h1 style={{ fontSize: '26px', fontWeight: 800, margin: '0 0 6px' }}>{teacher.fullName}</h1>
             <div style={{ fontSize: '15px', color: 'var(--text-secondary)' }}>

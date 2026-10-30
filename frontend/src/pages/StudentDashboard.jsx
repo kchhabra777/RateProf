@@ -29,7 +29,7 @@ import { Sparkles } from 'lucide-react';
 import { updatePageSEO, buildTeacherSchema } from '../utils/seo';
 import { SuggestTeacherModal } from '../components/SuggestTeacherModal';
 import { ThaparProfileLink } from '../components/ThaparProfileLink';
-import { getTeacherPhoto } from '../utils/teacherMedia';
+import { TeacherAvatar } from '../components/TeacherAvatar';
 import { TeacherAIInsights } from '../components/TeacherAIInsights';
 // recharts is ~110 kB gzipped and only used for this chart, so it loads with the chart
 const TagStatsChart = lazy(() => import('../components/TagStatsChart'));
@@ -694,7 +694,7 @@ export const StudentDashboard = ({ onGoHome }) => {
           onClick={() => handleTabChange('feed')}
           className={`btn ${mobileTab === 'feed' ? 'btn-primary' : 'btn-secondary'}`}
         >
-          <HeartHandshake size={16} /> Peer Support
+          <HeartHandshake size={16} /> Ask &amp; Discuss
         </button>
         <button 
           onClick={() => handleTabChange('leaderboard')}
@@ -917,26 +917,11 @@ export const StudentDashboard = ({ onGoHome }) => {
           <div className="card" style={{ marginBottom: '24px' }}>
             <div className="profile-header-wrap" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
               <div className="profile-header-info" style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-                <div className="profile-avatar-container">
-                  <img
-                    src={
-                      getTeacherPhoto(selectedTeacher) ||
-                      `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedTeacher.fullName || selectedTeacher.code || 'Faculty')}&background=2563eb&color=fff&bold=true`
-                    }
-                    alt={selectedTeacher.fullName}
-                    style={{ 
-                      width: '100%', 
-                      height: '100%', 
-                      borderRadius: '50%', 
-                      objectFit: 'cover',
-                      border: '4px solid var(--bg-card)'
-                    }}
-                    onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedTeacher.fullName || selectedTeacher.code || 'Faculty')}&background=2563eb&color=fff&bold=true`;
-                  }}
+                <TeacherAvatar
+                  teacher={selectedTeacher}
+                  className="profile-avatar-container"
+                  imgStyle={{ border: '4px solid var(--bg-card)' }}
                 />
-                </div>
                 <div style={{ flex: 1 }}>
                   <h2 style={{ fontSize: '24px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                     <span>{selectedTeacher.fullName}</span>

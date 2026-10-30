@@ -29,7 +29,7 @@ export const MobileNav = ({ activeTab, setActiveTab }) => {
         />
         <NavButton 
           icon={<HeartHandshake size={22} />} 
-          label="Peer Support" 
+          label="Ask & Discuss" 
           isActive={activeTab === 'feed'} 
           onClick={() => setActiveTab('feed')} 
         />

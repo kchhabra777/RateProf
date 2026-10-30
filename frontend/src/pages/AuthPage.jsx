@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SignIn, useUser } from '@clerk/clerk-react';
-import { AlertCircle, ShieldCheck, Mail } from 'lucide-react';
+import { AlertCircle, GraduationCap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import BrandShowcase from '../components/ui/auth/BrandShowcase';
 import SignupForm from '../components/ui/auth/SignupForm';
@@ -155,8 +155,8 @@ export const AuthPage = () => {
                   fontWeight: 600,
                   color: '#b91c1c',
                 }}>
-                  <ShieldCheck size={13} />
-                  TIET Official Portal
+                  <GraduationCap size={13} />
+                  Built by TIET students
                 </div>
               </div>
 
@@ -189,45 +189,15 @@ export const AuthPage = () => {
                   </div>
                 )}
 
-                {/* Institutional Access Notice */}
-                <div style={{
-                  marginBottom: '14px',
-                  padding: '10px 14px',
-                  background: '#fef2f2',
-                  border: '1px solid #fecaca',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  textAlign: 'left',
-                  boxShadow: '0 2px 8px rgba(185, 28, 28, 0.04)',
-                }}>
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    background: '#fee2e2',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    color: '#b91c1c',
-                  }}>
-                    <Mail size={16} />
-                  </div>
-                  <div style={{ fontSize: '12px', lineHeight: 1.45, color: '#374151' }}>
-                    <div style={{ fontWeight: 700, color: '#991b1b', marginBottom: '1px' }}>
-                      TIET Institutional Access Only
-                    </div>
-                    Sign in with your official <strong style={{ color: '#b91c1c' }}>@thapar.edu</strong> email address (via Google or Email).
-                  </div>
-                </div>
 
                 {/* Clerk SignIn Widget */}
                 <SignIn
                   routing="hash"
                   signUpUrl="#/signup"
                   appearance={{
+                    layout: {
+                      logoImageUrl: '/rateprof-mark.svg',
+                    },
                     variables: {
                       colorPrimary: '#b91c1c',
                       colorText: '#0f172a',
@@ -314,7 +284,7 @@ export const AuthPage = () => {
                   gap: '5px',
                 }}>
                   <span>🔒</span>
-                  <span>Protected by institutional SSO & university data policies</span>
+                  <span>Only @thapar.edu accounts can join. Other students never see who wrote a review.</span>
                 </div>
               </div>
 
@@ -332,15 +302,9 @@ export const AuthPage = () => {
                 boxSizing: 'border-box',
               }}>
                 <span>
-                  Thapar Institute of Engineering & Technology
-                  <br />
-                  (Deemed to be University), Patiala
+                  RateProf is an independent student project for TIET, Patiala.
+                  It is not an official university website.
                 </span>
-                <div style={{ display: 'flex', gap: '16px' }}>
-                  <a href="#" style={{ color: '#9ca3af', textDecoration: 'none', fontWeight: 500 }}>Privacy</a>
-                  <a href="#" style={{ color: '#9ca3af', textDecoration: 'none', fontWeight: 500 }}>Terms</a>
-                  <a href="#" style={{ color: '#9ca3af', textDecoration: 'none', fontWeight: 500 }}>Help</a>
-                </div>
               </div>
             </div>
           )}

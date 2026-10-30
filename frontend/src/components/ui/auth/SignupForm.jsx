@@ -4,6 +4,7 @@ import { useAuth } from '../../../context/AuthContext';
 import {
   ArrowLeft,
   ShieldCheck,
+  GraduationCap,
   User,
   Mail,
   AlertCircle,
@@ -209,7 +210,7 @@ const SignupForm = ({ onSwitchToLogin }) => {
         width: '100%',
         boxSizing: 'border-box',
       }}>
-        {/* Top Bar: Back to Login + TIET Official Portal */}
+        {/* Top Bar: Back to Login + student-project badge */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -251,8 +252,8 @@ const SignupForm = ({ onSwitchToLogin }) => {
             fontWeight: 600,
             color: '#b91c1c',
           }}>
-            <ShieldCheck size={13} />
-            TIET Official Portal
+            <GraduationCap size={13} />
+            Built by TIET students
           </div>
         </div>
 
@@ -666,7 +667,7 @@ const SignupForm = ({ onSwitchToLogin }) => {
               lineHeight: 1.3,
               marginTop: '1px',
             }}>
-              Protected by institutional SSO and university data policies.
+              Reviews are anonymous to other students and faculty.
             </div>
           </div>
         </div>
@@ -685,24 +686,9 @@ const SignupForm = ({ onSwitchToLogin }) => {
         boxSizing: 'border-box',
       }}>
         <span>
-          Thapar Institute of Engineering & Technology
-          <br />
-          (Deemed to be University), Patiala
+          RateProf is an independent student project for TIET, Patiala.
+          It is not an official university website.
         </span>
-        <div style={{ display: 'flex', gap: '16px' }}>
-          <a href="#" style={{ color: '#9ca3af', textDecoration: 'none', fontWeight: 500 }}
-            onMouseEnter={(e) => e.target.style.color = '#6b7280'}
-            onMouseLeave={(e) => e.target.style.color = '#9ca3af'}
-          >Privacy</a>
-          <a href="#" style={{ color: '#9ca3af', textDecoration: 'none', fontWeight: 500 }}
-            onMouseEnter={(e) => e.target.style.color = '#6b7280'}
-            onMouseLeave={(e) => e.target.style.color = '#9ca3af'}
-          >Terms</a>
-          <a href="#" style={{ color: '#9ca3af', textDecoration: 'none', fontWeight: 500 }}
-            onMouseEnter={(e) => e.target.style.color = '#6b7280'}
-            onMouseLeave={(e) => e.target.style.color = '#9ca3af'}
-          >Help</a>
-        </div>
       </div>
     </div>
   );

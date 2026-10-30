@@ -16,7 +16,14 @@ const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_b
 const CLERK_LOCALIZATION = {
   signIn: {
     start: {
-      subtitle: 'Official @thapar.edu university accounts only',
+      title: 'Sign in to RateProf',
+      subtitle: 'Use your @thapar.edu account',
+    },
+  },
+  signUp: {
+    start: {
+      title: 'Create your RateProf account',
+      subtitle: 'Use your @thapar.edu account',
     },
   },
 };

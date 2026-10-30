@@ -2,7 +2,7 @@ import React from 'react';
 import { StarRating } from './StarRating';
 import { Award, BookOpen, Clock, TrendingUp, ChevronRight, Edit3, Crown, HelpCircle } from 'lucide-react';
 import { TiltCard } from './ui/tilt-card';
-import { getTeacherPhoto } from '../utils/teacherMedia';
+import { TeacherAvatar } from './TeacherAvatar';
 
 export const TeacherCard = ({ teacher, ratings, onViewReviews, onWriteReview, onSuggestName, canReview = false, isCR = false }) => {
   const rObj = ratings?.rating || ratings || {};
@@ -41,38 +41,20 @@ export const TeacherCard = ({ teacher, ratings, onViewReviews, onWriteReview, on
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '14px' }}>
-        <div style={{
-          width: '96px',
-          height: '96px',
-          borderRadius: '50%',
-          padding: '3px',
-          background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%)',
-          boxShadow: '0 8px 24px rgba(139, 92, 246, 0.3)',
-          flexShrink: 0
-        }}>
-          <img
-            src={
-              getTeacherPhoto(teacher) ||
-              `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.fullName || teacher.code || 'Faculty')}&background=2563eb&color=fff&bold=true`
-            }
-            alt={teacher.fullName}
-            loading="lazy"
-            decoding="async"
-            width={90}
-            height={90}
-            style={{ 
-              width: '100%', 
-              height: '100%', 
-              borderRadius: '50%', 
-              objectFit: 'cover',
-              border: '3px solid var(--bg-card)'
-            }}
-            onError={(e) => {
-              e.target.onerror = null;
-              e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.fullName || teacher.code || 'Faculty')}&background=2563eb&color=fff&bold=true`;
-            }}
-          />
-        </div>
+        <TeacherAvatar
+          teacher={teacher}
+          lazy
+          style={{
+            width: '96px',
+            height: '96px',
+            borderRadius: '50%',
+            padding: '3px',
+            background: 'linear-gradient(135deg, #9f1515 0%, #d32f2f 50%, #fbd5d5 100%)',
+            boxShadow: '0 8px 22px rgba(183, 28, 28, 0.22)',
+            flexShrink: 0
+          }}
+          imgStyle={{ border: '3px solid var(--bg-card)' }}
+        />
         <div style={{ flex: 1, minWidth: 0 }}>
           <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <span>{teacher.fullName}</span>

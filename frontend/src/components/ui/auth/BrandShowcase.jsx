@@ -1,4 +1,5 @@
 import React from 'react';
+import { BrandMark } from '../../BrandMark';
 import { MessageSquare, ShieldCheck, BarChart3 } from 'lucide-react';
 
 const BrandShowcase = () => {
@@ -78,27 +79,19 @@ const BrandShowcase = () => {
         boxSizing: 'border-box',
         flex: 1,
       }}>
-        {/* Top: Logo + Brand */}
+        {/* Top: RateProf logo (same lockup as the navbar) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <img
-            src="/tiet-logo.svg"
-            alt="TIET"
-            style={{
-              height: '34px',
-              width: 'auto',
-              filter: 'brightness(0) invert(1)',
-            }}
-          />
-          <div style={{ borderLeft: '1.5px solid rgba(255,255,255,0.3)', paddingLeft: '12px' }}>
+          <BrandMark size={40} />
+          <div>
             <div style={{
-              fontSize: '13.5px',
-              fontWeight: 700,
+              fontSize: '19px',
+              fontWeight: 800,
               color: '#ffffff',
-              letterSpacing: '0.04em',
-              lineHeight: 1.25,
+              letterSpacing: '-0.02em',
+              lineHeight: 1.15,
               fontFamily: '"Plus Jakarta Sans", sans-serif',
             }}>
-              THAPAR INSTITUTE
+              Rate<span style={{ color: '#ef4444' }}>Prof</span>
             </div>
             <div style={{
               fontSize: '10px',
@@ -107,7 +100,7 @@ const BrandShowcase = () => {
               letterSpacing: '0.06em',
               textTransform: 'uppercase',
             }}>
-              OF ENGINEERING & TECHNOLOGY
+              Transparent &amp; honest campus reviews
             </div>
           </div>
         </div>
@@ -198,7 +191,7 @@ const BrandShowcase = () => {
               color: 'rgba(255,255,255,0.5)',
               lineHeight: 1.4,
             }}>
-              Feedback is securely anonymous and cannot be traced to you.
+              Other students and faculty never see who wrote a review.
             </div>
           </div>
 

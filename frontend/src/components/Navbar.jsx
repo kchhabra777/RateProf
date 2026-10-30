@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../hooks/useTheme';
 import { LogOut, User, Award, Sun, Moon, KeyRound } from 'lucide-react';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import { BrandMark } from './BrandMark';
 
 export const Navbar = ({ currentView, setCurrentView, onGoHome }) => {
   const { user, logout } = useAuth();
@@ -42,13 +43,9 @@ export const Navbar = ({ currentView, setCurrentView, onGoHome }) => {
           title="Return to RateProf Homepage"
           aria-label="RateProf Homepage"
         >
-          <img
-            src="/tiet-navbar-logo.png"
-            alt="Thapar Institute Logo"
-            style={{ height: '46px', width: 'auto', objectFit: 'contain', display: 'block' }}
-          />
+          <BrandMark size={40} />
           <div>
-            <div className="brand-title">RateProf</div>
+            <div className="brand-title">Rate<span className="brand-title-accent">Prof</span></div>
             <div className="brand-subtitle">Transparent &amp; Honest Campus Reviews</div>
           </div>
         </div>
