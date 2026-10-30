@@ -30,6 +30,7 @@ import { Sparkles } from 'lucide-react';
 import { updatePageSEO, buildTeacherSchema } from '../utils/seo';
 import { SuggestTeacherModal } from '../components/SuggestTeacherModal';
 import { ThaparProfileLink } from '../components/ThaparProfileLink';
+import { getTeacherPhoto } from '../utils/teacherMedia';
 import { TeacherAIInsights } from '../components/TeacherAIInsights';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 import CloudLoader from '../components/ui/quantum-cloud-loader';
@@ -700,7 +701,7 @@ export const StudentDashboard = ({ onGoHome }) => {
                 <Award color="#eab308" /> Top Helpers Leaderboard
               </h3>
               <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
-                Recognizing students providing academic guidance and detailed feedback.
+                Recognizing students providing academic guidance and detailed feedback. Updated daily.
               </p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -734,7 +735,7 @@ export const StudentDashboard = ({ onGoHome }) => {
               </div>
               <div>
                 <div style={{ fontWeight: 700, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {student.initials}
+                  {student.fullName || student.initials}
                   {student.isYou && <span className="badge" style={{ fontSize: '10px', padding: '2px 6px' }}>You</span>}
                 </div>
                 {student.branch && (
@@ -752,9 +753,9 @@ export const StudentDashboard = ({ onGoHome }) => {
           ))}
         </div>
       ) : mobileTab === 'profile' ? (
-        <div style={{ maxWidth: '600px', margin: '24px auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Identity Card */}
-          <div className="card" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div className="student-profile-grid">
+          {/* Identity Card (full-width header on desktop) */}
+          <div className="card student-profile-identity" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
             <div style={{
               width: '56px',
               height: '56px',
@@ -780,11 +781,30 @@ export const StudentDashboard = ({ onGoHome }) => {
                 <span className="badge" style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}>Batch {studentBatch}</span>
               </div>
             </div>
+            <div className="student-profile-stats">
+              <div className="student-profile-stat">
+                <span>Year</span>
+                <strong>{studentYear}</strong>
+              </div>
+              <div className="student-profile-stat">
+                <span>XP</span>
+                <strong style={{ color: '#a21caf' }}>{user?.studentProfile?.xp || 0}</strong>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleTabChange('leaderboard')}
+                className="student-profile-stat"
+                title="Click to view Top Helpers Leaderboard"
+              >
+                <span>Helper Rank</span>
+                <strong>{userRank ? `#${userRank}` : '—'}</strong>
+              </button>
+            </div>
           </div>
 
           {/* Academic Settings Card */}
           <div className="card" style={{ padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
               <div>
                 <h3 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 4px 0' }}>Academic Group</h3>
                 <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>
@@ -812,8 +832,8 @@ export const StudentDashboard = ({ onGoHome }) => {
                   </strong>
                 </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                   <span style={{ color: 'var(--text-muted)' }}>Free Elective (Open): </span>
                   <strong style={{ color: currentFreeElective ? '#10b981' : 'var(--text-primary)' }}>
                     {currentFreeElective ? `${currentFreeElective} - ${getElectiveName(currentFreeElective)}` : (studentYear >= 3 ? 'None (Core Only)' : 'None (1st & 2nd Year Core)')}
@@ -827,7 +847,7 @@ export const StudentDashboard = ({ onGoHome }) => {
                       setIsElectiveModalOpen(true);
                     }}
                     className="btn btn-secondary btn-sm"
-                    style={{ padding: '2px 8px', fontSize: '11px', height: '22px' }}
+                    style={{ padding: '4px 10px', fontSize: '12px', whiteSpace: 'nowrap', flexShrink: 0 }}
                   >
                     <Edit3 size={12} /> Change Electives
                   </button>
@@ -838,7 +858,7 @@ export const StudentDashboard = ({ onGoHome }) => {
 
           {/* Security & Password Card */}
           <div className="card" style={{ padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
               <div>
                 <h3 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 4px 0' }}>Account Security</h3>
                 <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>
@@ -853,10 +873,10 @@ export const StudentDashboard = ({ onGoHome }) => {
                 <KeyRound size={14} /> Change Password
               </button>
             </div>
-            <div style={{ background: 'var(--bg-card-subtle)', padding: '12px 16px', borderRadius: '10px', fontSize: '13px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ background: 'var(--bg-card-subtle)', padding: '12px 16px', borderRadius: '10px', fontSize: '13px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
               <span style={{ color: 'var(--text-muted)' }}>Registered Email:</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <strong style={{ color: 'var(--text-primary)' }}>{user?.email}</strong>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                <strong style={{ color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{user?.email}</strong>
                 <span style={{ fontSize: '10px', fontWeight: 700, background: '#dcfce7', color: '#15803d', padding: '2px 6px', borderRadius: '99px' }}>Verified</span>
               </div>
             </div>
@@ -880,7 +900,7 @@ export const StudentDashboard = ({ onGoHome }) => {
                 <div className="profile-avatar-container">
                   <img
                     src={
-                      selectedTeacher.photoUrl ||
+                      getTeacherPhoto(selectedTeacher) ||
                       `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedTeacher.fullName || selectedTeacher.code || 'Faculty')}&background=2563eb&color=fff&bold=true`
                     }
                     alt={selectedTeacher.fullName}

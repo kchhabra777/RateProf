@@ -2,6 +2,7 @@ import React from 'react';
 import { StarRating } from './StarRating';
 import { Award, BookOpen, Clock, TrendingUp, ChevronRight, Edit3, Crown, HelpCircle } from 'lucide-react';
 import { TiltCard } from './ui/tilt-card';
+import { getTeacherPhoto } from '../utils/teacherMedia';
 
 export const TeacherCard = ({ teacher, ratings, onViewReviews, onWriteReview, onSuggestName, canReview = false, isCR = false }) => {
   const rObj = ratings?.rating || ratings || {};
@@ -51,7 +52,7 @@ export const TeacherCard = ({ teacher, ratings, onViewReviews, onWriteReview, on
         }}>
           <img
             src={
-              teacher.photoUrl ||
+              getTeacherPhoto(teacher) ||
               `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.fullName || teacher.code || 'Faculty')}&background=2563eb&color=fff&bold=true`
             }
             alt={teacher.fullName}

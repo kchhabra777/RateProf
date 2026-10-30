@@ -1,5 +1,6 @@
 import React from 'react';
 import { ExternalLink } from 'lucide-react';
+import { getThaparProfileUrl } from '../utils/teacherMedia';
 
 export const ThaparProfileLink = ({ teacher }) => {
   const teacherEmail = teacher.user?.email || teacher.email || '';
@@ -8,7 +9,8 @@ export const ThaparProfileLink = ({ teacher }) => {
   
   if (!isThaparEmail && !teacherName) return null;
 
-  let profileUrl = teacher.thaparProfileUrl;
+  const knownProfileUrl = getThaparProfileUrl(teacher);
+  let profileUrl = knownProfileUrl;
 
   if (profileUrl && profileUrl.includes('google.com/url?q=')) {
     try {
@@ -53,7 +55,7 @@ export const ThaparProfileLink = ({ teacher }) => {
         style={{ width: '12px', height: '12px', borderRadius: '2px' }}
         onError={(e) => { e.currentTarget.style.display = 'none'; }}
       />
-      {teacher.thaparProfileUrl ? 'Verified Thapar Profile' : 'Thapar Profile'}
+      {knownProfileUrl ? 'Verified Thapar Profile' : 'Thapar Profile'}
       <ExternalLink size={12} />
     </a>
   );

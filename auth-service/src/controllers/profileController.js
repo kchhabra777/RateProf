@@ -339,13 +339,13 @@ export const getCRBatchRequests = async (req, res) => {
   }
 };
 
-// The leaderboard must not reveal who a student is: XP rises when a student posts a review, so
-// names or roll numbers next to XP would let anyone match a new "anonymous" review to its author.
-// Entries carry initials and branch only, and the list is rebuilt at most every 15 minutes so
-// individual XP jumps blur together.
+// XP rises when a student posts a review, so a live name + XP list would let anyone match a new
+// "anonymous" review to its author. Names are shown, but the list is only visible to signed-in
+// users, never includes roll numbers or IDs, and is rebuilt at most once a day so individual XP
+// jumps cannot be timed against new reviews.
 let leaderboardCache = null;
 let leaderboardCacheTime = 0;
-const LEADERBOARD_CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+const LEADERBOARD_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 const toInitials = (fullName) => {
   const parts = (fullName || "").trim().split(/\s+/).filter(Boolean);
@@ -382,6 +382,7 @@ export const getStudentLeaderboard = async (req, res) => {
       leaderboardCache = topStudents.map((s, idx) => ({
         userId: s.userId,
         rank: idx + 1,
+        fullName: s.fullName?.trim() || null,
         initials: toInitials(s.fullName),
         branch: effectiveBranch(s.batch, s.branch),
         xp: s.xp

@@ -1135,7 +1135,14 @@ h1, h2, h3, h4, h5, h6 {
     display: none !important;
   }
   .navbar-actions {
-    gap: 6px !important;
+    gap: 4px !important;
+  }
+  .navbar-actions .btn-sm {
+    padding: 6px 8px;
+  }
+  .navbar .navbar-inner {
+    padding: 10px 12px;
+    gap: 8px;
   }
   .navbar .brand-logo img {
     height: 36px !important;
@@ -1154,5 +1161,69 @@ h1, h2, h3, h4, h5, h6 {
   }
   .desktop-tabs {
     display: none !important;
+  }
+}
+
+/* Student "My Profile" tab: full-width identity header, then two columns on desktop */
+.student-profile-grid {
+  max-width: 1200px;
+  margin: 24px auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+.student-profile-identity {
+  grid-column: 1 / -1;
+}
+.student-profile-stats {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.student-profile-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 92px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-light);
+  font: inherit;
+  color: var(--text-primary);
+  text-align: left;
+}
+button.student-profile-stat {
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+button.student-profile-stat:hover {
+  border-color: var(--primary);
+}
+.student-profile-stat span {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.student-profile-stat strong {
+  font-size: 18px;
+  font-weight: 800;
+}
+@media (min-width: 1024px) {
+  .student-profile-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+}
+@media (max-width: 640px) {
+  .student-profile-stats {
+    width: 100%;
+  }
+  .student-profile-stat {
+    flex: 1;
+    min-width: 0;
   }
 }

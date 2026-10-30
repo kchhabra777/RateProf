@@ -8,6 +8,7 @@ import { ThaparProfileLink } from '../components/ThaparProfileLink';
 import { ShareProfileModal } from '../components/ShareProfileModal';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { getTeacherPhoto } from '../utils/teacherMedia';
 
 export function PublicTeacherProfile({ teacherId, onBack, onLoginClick }) {
   const { user } = useAuth();
@@ -116,7 +117,7 @@ export function PublicTeacherProfile({ teacherId, onBack, onLoginClick }) {
 
   // "Dr. Anjula Mehto" -> "Anjula" for the call-to-action button
   const firstName = teacher.fullName.split(/\s+/).find(w => !/^(dr|prof|mr|mrs|ms)\.?$/i.test(w)) || teacher.fullName;
-  const avatar = teacher.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.fullName)}&background=2563eb&color=fff&bold=true`;
+  const avatar = getTeacherPhoto(teacher) || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.fullName)}&background=2563eb&color=fff&bold=true`;
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '24px 16px' }} className="fade-in">
