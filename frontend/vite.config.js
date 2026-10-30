@@ -13,6 +13,12 @@ export default defineConfig({
       registerType: 'autoUpdate',
       // Registered from src/pwa.js so updates are picked up without closing the app
       injectRegister: false,
+      // Must be explicit: the plugin only enables these for injectRegister 'auto'. Without them a
+      // new service worker waits forever and visitors keep getting the old build.
+      workbox: {
+        skipWaiting: true,
+        clientsClaim: true
+      },
       includeAssets: ['favicon.png', 'robots.txt'],
       manifest: {
         name: 'RateProf - Thapar Reviews',
