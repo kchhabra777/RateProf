@@ -50,9 +50,10 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
+        // Only split out libraries the first screen needs anyway. Forcing recharts / framer-motion
+        // into named chunks made the entry chunk import them, so every visitor (even on the login
+        // page) downloaded the charting library; left alone they load with the pages that use them.
         manualChunks: {
-          'vendor-charts': ['recharts'],
-          'vendor-motion': ['framer-motion'],
           'vendor-icons': ['lucide-react'],
           'vendor-clerk': ['@clerk/clerk-react']
         }

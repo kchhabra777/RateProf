@@ -4,6 +4,7 @@ import {
   onboardTeacher,
   listTeachers,
   getTeacherProfile,
+  getTeacherPhotoImage,
   suggestTeacherName,
   requestBatchChange,
   getMyBatchRequests,
@@ -26,6 +27,7 @@ router.get("/student/cr/batch-requests", requireAuth, requireRole("STUDENT"), ge
 router.post("/teacher", requireAuth, requireRole("TEACHER"), onboardTeacher);
 router.get("/teachers", listTeachers);
 router.get("/teachers/:id", getTeacherProfile);
+router.get("/teachers/:id/photo", getTeacherPhotoImage);
 router.post("/teachers/:id/suggest-name", requireAuth, suggestTeacherName);
 
 export default router;

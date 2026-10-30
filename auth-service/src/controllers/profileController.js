@@ -6,6 +6,7 @@ import {
   getTeacherById,
   getTeacherBySlug
 } from "../services/profileService.js";
+import { withPublicPhoto, decodePhotoDataUrl } from "../utils/teacherPhoto.js";
 
 export const onboardStudent = async (req, res) => {
   try {
@@ -84,11 +85,13 @@ export const invalidateTeachersCache = () => {
 
 export const listTeachers = async (req, res) => {
   try {
+    // Same for every visitor: let the Vercel edge cache it briefly so most loads skip the trip to EC2
+    res.set("Cache-Control", "public, max-age=0, s-maxage=60, stale-while-revalidate=300");
     if (allTeachersCache && Date.now() - allTeachersCacheTime < TEACHERS_CACHE_TTL) {
       return res.status(200).json({ teachers: allTeachersCache });
     }
 
-    const teachers = await getAllTeachers();
+    const teachers = (await getAllTeachers()).map((t) => withPublicPhoto(t));
     allTeachersCache = teachers;
     allTeachersCacheTime = Date.now();
 
@@ -105,9 +108,26 @@ export const getTeacherProfile = async (req, res) => {
     if (!teacher) {
       return res.status(404).json({ error: "Teacher not found" });
     }
-    return res.status(200).json({ teacher });
+    return res.status(200).json({ teacher: withPublicPhoto(teacher) });
   } catch (error) {
     return res.status(500).json({ error: "Failed to fetch teacher profile" });
+  }
+};
+
+// Serves a photo stored as a data URL as a real, cacheable image (see utils/teacherPhoto.js)
+export const getTeacherPhotoImage = async (req, res) => {
+  try {
+    const teacher = await getTeacherById(req.params.id);
+    const image = decodePhotoDataUrl(teacher?.photoUrl);
+    if (!image) {
+      return res.status(404).json({ error: "Photo not found" });
+    }
+    res.set("Content-Type", image.contentType);
+    // The URL carries a fingerprint of the photo, so it can be cached for a long time
+    res.set("Cache-Control", "public, max-age=604800, immutable");
+    return res.status(200).send(image.body);
+  } catch (error) {
+    return res.status(500).json({ error: "Failed to load photo" });
   }
 };
 

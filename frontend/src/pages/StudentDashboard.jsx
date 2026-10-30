@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api, OFFICIAL_ELECTIVES, getElectiveName, isFreeElective } from '../api/client';
 import { TeacherCard } from '../components/TeacherCard';
 import { ReviewCard } from '../components/ReviewCard';
 import { WriteReviewModal } from '../components/WriteReviewModal';
 import { StarRating } from '../components/StarRating';
-import { getTagTheme } from '../lib/tagTheme';
 import {
   Users,
   BookOpen,
@@ -32,7 +31,8 @@ import { SuggestTeacherModal } from '../components/SuggestTeacherModal';
 import { ThaparProfileLink } from '../components/ThaparProfileLink';
 import { getTeacherPhoto } from '../utils/teacherMedia';
 import { TeacherAIInsights } from '../components/TeacherAIInsights';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
+// recharts is ~110 kB gzipped and only used for this chart, so it loads with the chart
+const TagStatsChart = lazy(() => import('../components/TagStatsChart'));
 import CloudLoader from '../components/ui/quantum-cloud-loader';
 import { Marquee } from '../components/ui/marquee';
 import { TAG_THEMES } from '../lib/tagTheme';
@@ -47,6 +47,8 @@ import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 
+
+const TEACHER_PAGE_SIZE = 24;
 
 export const StudentDashboard = ({ onGoHome }) => {
   const { user, onboardStudent, setUser } = useAuth();
@@ -524,6 +526,24 @@ export const StudentDashboard = ({ onGoHome }) => {
     const query = searchQuery.toLowerCase();
     return name.toLowerCase().includes(query) || dept.toLowerCase().includes(query);
   });
+
+  // "All Campus Faculty" has 200+ cards; building them all at once froze the page for ~0.4 s.
+  // Render them in batches and add the next batch as the user scrolls near the end.
+  const [visibleTeacherCount, setVisibleTeacherCount] = useState(TEACHER_PAGE_SIZE);
+  const loadMoreTeachersRef = useRef(null);
+  useEffect(() => {
+    setVisibleTeacherCount(TEACHER_PAGE_SIZE);
+  }, [tab, searchQuery]);
+  const hasMoreTeachers = visibleTeacherCount < displayedTeachers.length;
+  useEffect(() => {
+    const sentinel = loadMoreTeachersRef.current;
+    if (!sentinel || !hasMoreTeachers) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) setVisibleTeacherCount((c) => c + TEACHER_PAGE_SIZE);
+    }, { rootMargin: '800px 0px' });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMoreTeachers, visibleTeacherCount]);
 
   const sortedReviews = [...selectedTeacherReviews].sort((a, b) => {
     if (reviewSort === 'recent') {
@@ -1241,59 +1261,9 @@ export const StudentDashboard = ({ onGoHome }) => {
                   </div>
                 ) : (
                   <div style={{ width: '100%', height: Math.max(210, displayTeacherTagStats.length * 40) }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        layout="vertical"
-                        data={displayTeacherTagStats}
-                        margin={{ top: 0, right: 40, left: 0, bottom: 0 }}
-                      >
-                        <XAxis type="number" hide domain={[0, 100]} />
-                        <YAxis 
-                          type="category" 
-                          dataKey="name" 
-                          axisLine={false} 
-                          tickLine={false} 
-                          width={160}
-                          tick={({ x, y, payload }) => (
-                            <text
-                              x={x}
-                              y={y}
-                              dy={4}
-                              textAnchor="end"
-                              fill="var(--text-primary)"
-                              fontSize={11.5}
-                              fontWeight={600}
-                            >
-                              {payload.value}
-                            </text>
-                          )}
-                        />
-                        <Tooltip 
-                          cursor={{ fill: 'var(--bg-card-subtle)' }} 
-                          contentStyle={{ backgroundColor: 'var(--bg-panel)', borderColor: 'var(--border-light)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
-                          itemStyle={{ fontWeight: 700 }}
-                          formatter={(val) => [`${val}%`, 'Frequency']}
-                        />
-                        <Bar 
-                          dataKey="percentage" 
-                          radius={[6, 6, 6, 6]} 
-                          barSize={12} 
-                          background={{ fill: 'var(--bg-card-subtle)', radius: [6, 6, 6, 6] }}
-                          label={{ position: 'right', fill: 'var(--text-primary)', fontSize: 12, fontWeight: 700, formatter: (val) => `${val}%` }}
-                        >
-                          {displayTeacherTagStats.map((entry, index) => {
-                            const theme = getTagTheme(entry.name);
-                            return (
-                              <Cell 
-                                key={`cell-${index}`} 
-                                fill={theme.color} 
-                                style={{ filter: `drop-shadow(0 0 6px ${theme.border})` }} 
-                              />
-                            );
-                          })}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <Suspense fallback={null}>
+                      <TagStatsChart data={displayTeacherTagStats} />
+                    </Suspense>
                   </div>
                 )}
               </div>
@@ -1588,7 +1558,7 @@ export const StudentDashboard = ({ onGoHome }) => {
             </div>
           ) : (
             <div className="grid-3">
-              {displayedTeachers.map((teacher, idx) => {
+              {displayedTeachers.slice(0, visibleTeacherCount).map((teacher, idx) => {
                 const id = teacher.userId || teacher.user?.id || teacher.id;
                 const ratings = teacherRatingsMap[id] || { overallRating: 0, recentRating: 0, totalReviews: 0 };
                 return (
@@ -1605,6 +1575,9 @@ export const StudentDashboard = ({ onGoHome }) => {
                 );
               })}
             </div>
+          )}
+          {hasMoreTeachers && displayedTeachers.length > 0 && (
+            <div ref={loadMoreTeachersRef} style={{ height: '1px' }} aria-hidden="true" />
           )}
         </div>
       )}

@@ -56,6 +56,10 @@ export const TeacherCard = ({ teacher, ratings, onViewReviews, onWriteReview, on
               `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.fullName || teacher.code || 'Faculty')}&background=2563eb&color=fff&bold=true`
             }
             alt={teacher.fullName}
+            loading="lazy"
+            decoding="async"
+            width={90}
+            height={90}
             style={{ 
               width: '100%', 
               height: '100%', 

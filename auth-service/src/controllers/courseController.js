@@ -8,6 +8,7 @@ import {
   getAvailableElectives
 } from "../services/courseService.js";
 import prisma from "../lib/prisma.js";
+import { withPublicPhoto } from "../utils/teacherPhoto.js";
 
 export const createOffering = async (req, res) => {
   try {
@@ -127,12 +128,12 @@ export const getEligibleTeachers = async (req, res) => {
       return res.status(200).json({ teachers: cached.data });
     }
 
-    const teachers = await getEligibleTeachersForStudent({
+    const teachers = (await getEligibleTeachersForStudent({
       batch,
       branch,
       studentUserId: req.user?.id,
       electives
-    });
+    })).map((t) => withPublicPhoto(t, t.userId));
     eligibleTeachersCache.set(cacheKey, { data: teachers, timestamp: Date.now() });
 
     return res.status(200).json({ teachers });
