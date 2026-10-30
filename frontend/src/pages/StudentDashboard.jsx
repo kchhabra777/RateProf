@@ -537,8 +537,8 @@ export const StudentDashboard = ({ onGoHome }) => {
 
   return (
     <div className="main-content">
-      {/* Student Welcome Card */}
-      <div className="card" style={{ marginBottom: '24px' }}>
+      {/* Student Welcome Card (on phones only on the Faculty tab; the Profile tab has the same details) */}
+      <div className={`card${mobileTab !== 'directory' ? ' mobile-hidden' : ''}`} style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
@@ -657,7 +657,7 @@ export const StudentDashboard = ({ onGoHome }) => {
       )}
 
       {/* Desktop Tabs (Hidden on mobile) */}
-      <div className="desktop-tabs hidden md:flex" style={{ 
+      <div className="desktop-tabs" style={{ 
         gap: '12px', 
         marginBottom: '24px',
         borderBottom: '1px solid var(--border-light)',

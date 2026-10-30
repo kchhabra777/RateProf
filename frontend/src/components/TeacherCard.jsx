@@ -238,6 +238,7 @@ export const TeacherCard = ({ teacher, ratings, onViewReviews, onWriteReview, on
                       key={i} 
                       className="badge badge-neutral" 
                       style={{ 
+                        display: 'inline-block',
                         fontSize: '11.5px', 
                         lineHeight: '1.4',
                         maxWidth: '100%',

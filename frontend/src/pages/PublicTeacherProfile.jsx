@@ -7,8 +7,10 @@ import CloudLoader from '../components/ui/quantum-cloud-loader';
 import { ThaparProfileLink } from '../components/ThaparProfileLink';
 import { ShareProfileModal } from '../components/ShareProfileModal';
 import { api } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 
 export function PublicTeacherProfile({ teacherId, onBack, onLoginClick }) {
+  const { user } = useAuth();
   const [teacher, setTeacher] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [ratings, setRatings] = useState(null);
@@ -112,16 +114,18 @@ export function PublicTeacherProfile({ teacherId, onBack, onLoginClick }) {
     );
   }
 
+  // "Dr. Anjula Mehto" -> "Anjula" for the call-to-action button
+  const firstName = teacher.fullName.split(/\s+/).find(w => !/^(dr|prof|mr|mrs|ms)\.?$/i.test(w)) || teacher.fullName;
   const avatar = teacher.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.fullName)}&background=2563eb&color=fff&bold=true`;
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '24px 16px' }} className="fade-in">
       {/* Top action bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' }}>
         <button onClick={onBack} className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <ArrowLeft size={14} /> Back to Directory
         </button>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <button 
             onClick={() => setIsShareOpen(true)} 
             className="btn btn-secondary btn-sm" 
@@ -131,7 +135,7 @@ export function PublicTeacherProfile({ teacherId, onBack, onLoginClick }) {
             <Share2 size={14} /> Share Profile
           </button>
           <button onClick={onLoginClick} className="btn btn-primary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <LogIn size={14} /> Log In to Rate This Professor
+            <LogIn size={14} /> {user ? 'Rate This Professor' : 'Log In to Rate This Professor'}
           </button>
         </div>
       </div>
@@ -269,11 +273,13 @@ export function PublicTeacherProfile({ teacherId, onBack, onLoginClick }) {
         <div>
           <div style={{ fontWeight: 700, fontSize: '15px' }}>Studied under {teacher.fullName}?</div>
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-            Log in with your official university email to leave an authentic review and help juniors make informed course choices.
+            {user
+              ? 'Leave an authentic review from your dashboard and help juniors make informed course choices.'
+              : 'Log in with your official university email to leave an authentic review and help juniors make informed course choices.'}
           </div>
         </div>
         <button onClick={onLoginClick} className="btn btn-primary btn-sm">
-          Rate {teacher.fullName.split(' ')[0]}
+          Rate {firstName}
         </button>
       </div>
 

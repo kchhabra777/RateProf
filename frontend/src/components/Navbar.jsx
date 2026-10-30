@@ -53,7 +53,7 @@ export const Navbar = ({ currentView, setCurrentView, onGoHome }) => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className="navbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {/* Dark Mode Toggle */}
           <button
             className="theme-toggle"
@@ -77,7 +77,7 @@ export const Navbar = ({ currentView, setCurrentView, onGoHome }) => {
                     <User size={12} />
                     {user.studentProfile?.rollNumber || user.detectedBatch || 'Student'}
                     {user.studentProfile?.branch ? (
-                      <span className="hidden sm:inline"> ({user.studentProfile.branch})</span>
+                      <span className="nav-label"> ({user.studentProfile.branch})</span>
                     ) : ''}
                   </span>
                 ) : (
@@ -96,12 +96,12 @@ export const Navbar = ({ currentView, setCurrentView, onGoHome }) => {
                 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
               >
                 <KeyRound size={14} />
-                <span className="hidden sm:inline">Change Password</span>
+                <span className="nav-label">Change Password</span>
               </button>
 
-              <button onClick={logout} className="btn btn-subtle btn-sm" title="Log out">
+              <button onClick={logout} className="btn btn-subtle btn-sm" title="Log out" aria-label="Log out">
                 <LogOut size={15} />
-                <span>Logout</span>
+                <span className="nav-label">Logout</span>
               </button>
             </>
           )}

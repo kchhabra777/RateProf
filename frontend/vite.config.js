@@ -11,6 +11,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Registered from src/pwa.js so updates are picked up without closing the app
+      injectRegister: false,
       includeAssets: ['favicon.png', 'robots.txt'],
       manifest: {
         name: 'RateProf - Thapar Reviews',

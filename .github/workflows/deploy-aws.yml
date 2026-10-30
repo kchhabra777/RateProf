@@ -1,4 +1,4 @@
-﻿name: Deploy Backend to AWS EC2
+name: Deploy Backend to AWS EC2
 
 on:
   push:
@@ -35,7 +35,11 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           envs: DATABASE_URL,JWT_SECRET,GATEWAY_INTERNAL_SECRET,CLERK_SECRET_KEY,CLERK_PUBLISHABLE_KEY,GEMINI_API_KEY,ADMIN_EMAILS,SMTP_HOST,SMTP_PORT,SMTP_USER,SMTP_PASS,SMTP_FROM
+          # Fail the job when any step on the server fails, instead of reporting success
+          # while the old code keeps running
+          script_stop: true
           script: |
+            set -e
             echo "🚀 Connecting to EC2 and pulling latest changes from GitHub..."
             cd ~/campus-feedback-system || cd campus-feedback-system || cd /home/ubuntu/campus-feedback-system
 

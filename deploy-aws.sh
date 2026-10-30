@@ -76,6 +76,22 @@ echo "⚡ Starting services with PM2..."
 
 pm2 save
 
+# 6. Fail the deploy if any service did not come up (e.g. a missing secret makes it exit on start)
+echo "🩺 Checking service health..."
+for url in http://localhost:8000/health http://localhost:6001/health http://localhost:6002/health; do
+  ok=""
+  for _ in $(seq 1 15); do
+    if curl -fsS --max-time 3 "$url" > /dev/null; then ok=1; break; fi
+    sleep 2
+  done
+  if [ -z "$ok" ]; then
+    echo "❌ Health check failed: $url" >&2
+    pm2 logs --nostream --lines 30 || true
+    exit 1
+  fi
+  echo "   ✓ $url"
+done
+
 echo ""
 echo "========================================================="
 echo "✅ All 3 Campus Feedback microservices are running on AWS!"

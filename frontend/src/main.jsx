@@ -7,6 +7,9 @@ import { ErrorBoundary } from './components/ErrorBoundary.jsx';
 import { Toaster } from 'sonner';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import './index.css';
+import { setupServiceWorker } from './pwa';
+
+setupServiceWorker();
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_bWFueS1saW9uZmlzaC03NDE3LmNsZXJrLmFjY291bnRzLmRldiQ';
 

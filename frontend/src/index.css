@@ -1123,8 +1123,29 @@ h1, h2, h3, h4, h5, h6 {
   to { transform: rotate(360deg); }
 }
 
-/* Mobile Nav Display Logic */
+/* Mobile Nav Display Logic: tab bar above the phone breakpoint, bottom nav below it */
+.desktop-tabs {
+  display: flex;
+  flex-wrap: wrap;
+}
+
 @media (max-width: 640px) {
+  .nav-label,
+  .mobile-hidden {
+    display: none !important;
+  }
+  .navbar-actions {
+    gap: 6px !important;
+  }
+  .navbar .brand-logo img {
+    height: 36px !important;
+  }
+  /* Keep the scroll-to-top button above the bottom nav instead of covering "Profile" */
+  .scroll-to-top-button {
+    bottom: calc(78px + env(safe-area-inset-bottom, 0px)) !important;
+    right: 16px !important;
+  }
+
   .mobile-nav {
     display: flex !important;
   }
